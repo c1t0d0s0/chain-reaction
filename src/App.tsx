@@ -1,0 +1,342 @@
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { CourseData, GadgetData, GadgetType, SimulationSpeed, ViewportTransform } from './types';
+import { PhysicsEngine } from './physics/PhysicsEngine';
+import { DEFAULT_COURSES } from './presets/defaultCourses';
+import { Header } from './components/Header';
+import { Toolbar } from './components/Toolbar';
+import { GadgetPalette } from './components/GadgetPalette';
+import { PropertyInspector } from './components/PropertyInspector';
+import { PhysicsCanvas } from './components/PhysicsCanvas';
+import { GoalModal } from './components/GoalModal';
+import { HelpModal } from './components/HelpModal';
+
+export const App: React.FC = () => {
+  const physics = useMemo(() => new PhysicsEngine(), []);
+
+  const [currentCourse, setCurrentCourse] = useState<CourseData>(DEFAULT_COURSES[0]);
+  const [mode, setMode] = useState<'edit' | 'play'>('edit');
+  const [selectedTool, setSelectedTool] = useState<GadgetType | null>(null);
+  const [selectedGadgetId, setSelectedGadgetId] = useState<string | null>(null);
+  const [gadgetVersion, setGadgetVersion] = useState<number>(0);
+  const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [speed, setSpeed] = useState<SimulationSpeed>(1.0);
+  const [showGrid, setShowGrid] = useState<boolean>(true);
+  const [followMarble, setFollowMarble] = useState<boolean>(false);
+  const [isGoalReached, setIsGoalReached] = useState<boolean>(false);
+  const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
+
+  const [transform, setTransform] = useState<ViewportTransform>({
+    x: 40,
+    y: 40,
+    scale: 1.0,
+  });
+
+  // Selected Gadget Data for Inspector
+  const selectedGadget = useMemo(() => {
+    if (!selectedGadgetId) return null;
+    const bundle = physics.bundles.get(selectedGadgetId);
+    if (!bundle) return null;
+    const g = bundle.mainBody.plugin?.gadget as GadgetData | undefined;
+    return g ? JSON.parse(JSON.stringify(g)) : null;
+  }, [selectedGadgetId, physics, gadgetVersion, currentCourse]);
+
+  // Initialize Course on load
+  useEffect(() => {
+    physics.loadCourse(currentCourse.gadgets);
+
+    physics.onGoalReached = () => {
+      setIsGoalReached(true);
+    };
+
+    physics.onStateChange = () => {
+      setIsRunning(physics.isRunning);
+    };
+
+    return () => {
+      physics.pause();
+    };
+  }, [physics, currentCourse]);
+
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts if inside an input or slider
+      if ((e.target as HTMLElement).tagName === 'INPUT') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (mode === 'edit') {
+          setMode('play');
+          setSelectedTool(null);
+          physics.start();
+        } else {
+          if (physics.isRunning) {
+            physics.pause();
+          } else {
+            physics.start();
+          }
+        }
+      } else if (e.key === 'r' || e.key === 'R') {
+        setMode('edit');
+        setIsGoalReached(false);
+        physics.resetCourse();
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedGadgetId && !physics.isRunning) {
+          physics.removeGadget(selectedGadgetId);
+          setSelectedGadgetId(null);
+        }
+      } else if (e.key === 'Escape' || e.key === 'v' || e.key === 'V') {
+        setSelectedTool(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [physics, selectedGadgetId, mode]);
+
+  // Start Simulation
+  const handleStart = () => {
+    setMode('play');
+    setSelectedTool(null);
+    physics.start();
+  };
+
+  // Pause Simulation
+  const handlePause = () => {
+    physics.pause();
+  };
+
+  // Reset Simulation (restarts in play mode, stays in setup in edit mode)
+  const handleReset = () => {
+    setIsGoalReached(false);
+    physics.resetCourse();
+    if (mode === 'play') {
+      physics.start();
+    }
+  };
+
+  // Replay from Goal Modal or Replay button
+  const handleReplay = () => {
+    setIsGoalReached(false);
+    physics.resetCourse();
+    setMode('play');
+    physics.start();
+  };
+
+  // Explicit Return to Edit Mode (restores setup positions so everything can be edited)
+  const handleEnterEditMode = () => {
+    setMode('edit');
+    setIsGoalReached(false);
+    setSelectedTool(null);
+    physics.resetCourse();
+  };
+
+  // Speed Change
+  const handleSpeedChange = (newSpeed: SimulationSpeed) => {
+    setSpeed(newSpeed);
+    physics.simulationSpeed = newSpeed;
+  };
+
+  // Select Preset Course
+  const handleSelectCourse = (course: CourseData) => {
+    setCurrentCourse(course);
+    setMode('edit');
+    setSelectedGadgetId(null);
+    setSelectedTool(null);
+    setIsGoalReached(false);
+    setTransform({ x: 40, y: 40, scale: 1.0 });
+  };
+
+  // Create New Empty Course
+  const handleNewCourse = () => {
+    const emptyCourse: CourseData = {
+      id: `custom-${Date.now()}`,
+      title: 'オリジナルコース',
+      description: '自由に道具を配置して作成したコース',
+      gadgets: [
+        {
+          id: 'start-new',
+          type: 'start_gate',
+          x: 120,
+          y: 120,
+          angle: 0,
+        },
+        {
+          id: 'marble-new',
+          type: 'marble',
+          x: 120,
+          y: 100,
+          angle: 0,
+          options: { isPlayerBall: true, color: '#ef4444', radius: 14 },
+        },
+        {
+          id: 'goal-new',
+          type: 'goal',
+          x: 750,
+          y: 500,
+          angle: 0,
+        },
+      ],
+    };
+    setCurrentCourse(emptyCourse);
+    setMode('edit');
+    setSelectedGadgetId(null);
+    setSelectedTool(null);
+    setIsGoalReached(false);
+    setTransform({ x: 40, y: 40, scale: 1.0 });
+  };
+
+  // Export Course JSON
+  const handleExportCourse = () => {
+    const snapshot = physics.getSnapshot();
+    const exportData: CourseData = {
+      ...currentCourse,
+      gadgets: snapshot,
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${currentCourse.title.replace(/\s+/g, '_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Import Course JSON
+  const handleImportCourse = (course: CourseData) => {
+    setCurrentCourse(course);
+    setSelectedGadgetId(null);
+    setIsGoalReached(false);
+    setTransform({ x: 40, y: 40, scale: 1.0 });
+  };
+
+  // Gadget Lifecycle
+  const handleGadgetCreated = (newGadget: GadgetData) => {
+    physics.addGadget(newGadget);
+    physics.updateGadgetSnapshot(newGadget);
+    setGadgetVersion((v) => v + 1);
+  };
+
+  const handleGadgetUpdated = (updated: GadgetData) => {
+    physics.removeGadget(updated.id);
+    physics.addGadget(updated);
+    physics.updateGadgetSnapshot(updated);
+    setGadgetVersion((v) => v + 1);
+  };
+
+  const handleGadgetDelete = (id: string) => {
+    physics.removeGadget(id);
+    setSelectedGadgetId(null);
+    setGadgetVersion((v) => v + 1);
+  };
+
+  const handleGadgetDuplicate = (gadget: GadgetData) => {
+    const newId = `${gadget.type}-${Date.now()}`;
+    const duplicated: GadgetData = {
+      ...gadget,
+      id: newId,
+      x: gadget.x + 30,
+      y: gadget.y + 30,
+    };
+    physics.addGadget(duplicated);
+    physics.updateGadgetSnapshot(duplicated);
+    setSelectedGadgetId(newId);
+    setGadgetVersion((v) => v + 1);
+  };
+
+  // Next Stage Handler
+  const handleNextStage = () => {
+    setIsGoalReached(false);
+    const currentIndex = DEFAULT_COURSES.findIndex((c) => c.id === currentCourse.id);
+    if (currentIndex !== -1 && currentIndex < DEFAULT_COURSES.length - 1) {
+      handleSelectCourse(DEFAULT_COURSES[currentIndex + 1]);
+    } else {
+      handleSelectCourse(DEFAULT_COURSES[0]);
+    }
+  };
+
+  return (
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-900 text-slate-100 font-sans">
+      {/* Top Header */}
+      <Header
+        currentCourseId={currentCourse.id}
+        onSelectCourse={handleSelectCourse}
+        onNewCourse={handleNewCourse}
+        onExportCourse={handleExportCourse}
+        onImportCourse={handleImportCourse}
+        onOpenHelp={() => setIsHelpOpen(true)}
+      />
+
+      {/* Sub Toolbar */}
+      <Toolbar
+        mode={mode}
+        isRunning={isRunning}
+        onStart={handleStart}
+        onPause={handlePause}
+        onReset={handleReset}
+        onEnterEditMode={handleEnterEditMode}
+        speed={speed}
+        onSpeedChange={handleSpeedChange}
+        showGrid={showGrid}
+        onToggleGrid={() => setShowGrid(!showGrid)}
+        onZoomIn={() =>
+          setTransform((t) => ({ ...t, scale: Math.min(t.scale * 1.15, 3.0) }))
+        }
+        onZoomOut={() =>
+          setTransform((t) => ({ ...t, scale: Math.max(t.scale * 0.85, 0.35) }))
+        }
+        onResetView={() => setTransform({ x: 40, y: 40, scale: 1.0 })}
+        followMarble={followMarble}
+        onToggleFollowMarble={() => setFollowMarble(!followMarble)}
+      />
+
+      {/* Main Workspace: Left Palette + Center Canvas + Right Property Inspector */}
+      <div className="flex flex-1 relative overflow-hidden">
+        <GadgetPalette
+          selectedTool={selectedTool}
+          onSelectTool={(type) => {
+            setSelectedTool(type);
+            if (type) setSelectedGadgetId(null);
+          }}
+        />
+
+        <PhysicsCanvas
+          physics={physics}
+          selectedTool={selectedTool}
+          onClearTool={() => setSelectedTool(null)}
+          selectedGadgetId={selectedGadgetId}
+          onSelectGadget={setSelectedGadgetId}
+          onGadgetCreated={handleGadgetCreated}
+          onGadgetUpdated={handleGadgetUpdated}
+          showGrid={showGrid}
+          transform={transform}
+          onTransformChange={setTransform}
+          followMarble={followMarble}
+        />
+
+        {selectedGadget && mode === 'edit' && (
+          <PropertyInspector
+            gadget={selectedGadget}
+            onUpdate={handleGadgetUpdated}
+            onDuplicate={handleGadgetDuplicate}
+            onDelete={handleGadgetDelete}
+            onClose={() => setSelectedGadgetId(null)}
+          />
+        )}
+      </div>
+
+      {/* Goal Celebration Modal */}
+      <GoalModal
+        isOpen={isGoalReached}
+        onReplay={handleReplay}
+        onNextStage={handleNextStage}
+        onClose={handleEnterEditMode}
+      />
+
+      {/* Help Modal */}
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
+    </div>
+  );
+};

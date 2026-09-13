@@ -1,0 +1,391 @@
+// Procedural Sound Engine using Web Audio API
+// Generates realistic, physical sound effects without external audio files.
+
+class SoundEngine {
+  private ctx: AudioContext | null = null;
+  private isMuted: boolean = false;
+  private masterGain: GainNode | null = null;
+  private rollingGain: GainNode | null = null;
+  private rollingFilter: BiquadFilterNode | null = null;
+  private rollingSource: AudioBufferSourceNode | null = null;
+  private fanGain: GainNode | null = null;
+  private fanSource: AudioBufferSourceNode | null = null;
+  private isRollingActive: boolean = false;
+
+  constructor() {
+    // AudioContext will be initialized on first user interaction
+  }
+
+  private initContext() {
+    if (typeof window === 'undefined') return;
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      this.ctx = new AudioCtx();
+
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = this.isMuted ? 0 : 0.7;
+      this.masterGain.connect(this.ctx.destination);
+
+      this.setupRollingSound();
+      this.setupFanSound();
+    }
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+
+  public setMuted(muted: boolean) {
+    this.isMuted = muted;
+    if (this.masterGain) {
+      this.masterGain.gain.setTargetAtTime(muted ? 0 : 0.7, this.ctx?.currentTime || 0, 0.05);
+    }
+  }
+
+  public getMuted(): boolean {
+    return this.isMuted;
+  }
+
+  // Generate pink/white noise buffer
+  private createNoiseBuffer(durationSeconds = 2): AudioBuffer {
+    if (!this.ctx) throw new Error("Context not ready");
+    const bufferSize = this.ctx.sampleRate * durationSeconds;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      const white = Math.random() * 2 - 1;
+      b0 = 0.99886 * b0 + white * 0.0555179;
+      b1 = 0.99332 * b1 + white * 0.0750759;
+      b2 = 0.96900 * b2 + white * 0.1538520;
+      b3 = 0.86650 * b3 + white * 0.3104856;
+      b4 = 0.55000 * b4 + white * 0.5329522;
+      b5 = -0.7616 * b5 - white * 0.0168980;
+      data[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.11;
+      b6 = white * 0.115926;
+    }
+    return buffer;
+  }
+
+  // Loop for continuous marble rolling sound
+  private setupRollingSound() {
+    if (!this.ctx || !this.masterGain) return;
+    try {
+      const noiseBuffer = this.createNoiseBuffer(2);
+      this.rollingSource = this.ctx.createBufferSource();
+      this.rollingSource.buffer = noiseBuffer;
+      this.rollingSource.loop = true;
+
+      this.rollingFilter = this.ctx.createBiquadFilter();
+      this.rollingFilter.type = 'bandpass';
+      this.rollingFilter.frequency.value = 800;
+      this.rollingFilter.Q.value = 3.0;
+
+      this.rollingGain = this.ctx.createGain();
+      this.rollingGain.gain.value = 0;
+
+      this.rollingSource.connect(this.rollingFilter);
+      this.rollingFilter.connect(this.rollingGain);
+      this.rollingGain.connect(this.masterGain);
+
+      this.rollingSource.start(0);
+    } catch {
+      // Ignore if cannot start immediately
+    }
+  }
+
+  // Marble rolling sound modulation
+  public updateRollingSound(speed: number, isGrounded: boolean) {
+    if (!this.ctx || !this.rollingGain || !this.rollingFilter) return;
+    const now = this.ctx.currentTime;
+    if (!isGrounded || speed < 0.2) {
+      this.rollingGain.gain.setTargetAtTime(0, now, 0.05);
+      return;
+    }
+
+    const normSpeed = Math.min(speed / 15, 1.0);
+    const targetGain = normSpeed * 0.25;
+    const targetFreq = 400 + normSpeed * 1200;
+
+    this.rollingGain.gain.setTargetAtTime(targetGain, now, 0.03);
+    this.rollingFilter.frequency.setTargetAtTime(targetFreq, now, 0.03);
+  }
+
+  // Fan background hum
+  private setupFanSound() {
+    if (!this.ctx || !this.masterGain) return;
+    try {
+      const noiseBuffer = this.createNoiseBuffer(3);
+      this.fanSource = this.ctx.createBufferSource();
+      this.fanSource.buffer = noiseBuffer;
+      this.fanSource.loop = true;
+
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 350;
+
+      this.fanGain = this.ctx.createGain();
+      this.fanGain.gain.value = 0;
+
+      this.fanSource.connect(filter);
+      filter.connect(this.fanGain);
+      this.fanGain.connect(this.masterGain);
+
+      this.fanSource.start(0);
+    } catch {
+      // Ignore
+    }
+  }
+
+  public setFanActive(hasFansRunning: boolean) {
+    if (!this.ctx || !this.fanGain) return;
+    const now = this.ctx.currentTime;
+    this.fanGain.gain.setTargetAtTime(hasFansRunning ? 0.08 : 0, now, 0.2);
+  }
+
+  // Wood & Marble collision (コツン / カチャッ)
+  public playWoodImpact(velocity: number) {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const volume = Math.min(Math.max(velocity / 12, 0.05), 1.0) * 0.4;
+
+    // Resonant wooden body
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    const filter = this.ctx.createBiquadFilter();
+
+    osc.type = 'triangle';
+    const baseFreq = 650 + Math.random() * 150;
+    osc.frequency.setValueAtTime(baseFreq, now);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.4, now + 0.06);
+
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(baseFreq, now);
+    filter.Q.value = 6;
+
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(now);
+    osc.stop(now + 0.07);
+  }
+
+  // Domino topple click (カチッ)
+  public playDominoClick(velocity: number = 5) {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const volume = Math.min(Math.max(velocity / 10, 0.1), 0.8) * 0.35;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    const f = 1400 + Math.random() * 300;
+    osc.frequency.setValueAtTime(f, now);
+    osc.frequency.exponentialRampToValueAtTime(300, now + 0.03);
+
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(now);
+    osc.stop(now + 0.04);
+  }
+
+  // Spring Bounce "ボヨヨ〜ン"
+  public playSpringBoing(velocity: number = 8) {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const volume = Math.min(Math.max(velocity / 10, 0.2), 1.0) * 0.5;
+
+    // Carrier Oscillator
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    // Pitch sweep: fast bend up then wobbling decay
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(140, now);
+    osc.frequency.exponentialRampToValueAtTime(480, now + 0.08);
+    osc.frequency.exponentialRampToValueAtTime(220, now + 0.35);
+
+    // Modulation oscillator for "boing" vibrato
+    const mod = this.ctx.createOscillator();
+    const modGain = this.ctx.createGain();
+    mod.type = 'sine';
+    mod.frequency.setValueAtTime(22, now); // 22Hz flutter
+    modGain.gain.setValueAtTime(45, now);
+    modGain.gain.exponentialRampToValueAtTime(5, now + 0.35);
+
+    mod.connect(osc.frequency);
+
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+
+    mod.start(now);
+    osc.start(now);
+    mod.stop(now + 0.4);
+    osc.stop(now + 0.4);
+  }
+
+  // Water Splash "ポチャッ！ピチャッ"
+  public playWaterSplash(velocity: number = 6) {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const volume = Math.min(Math.max(velocity / 10, 0.1), 1.0) * 0.45;
+
+    // Noise splash element
+    const noiseBuffer = this.createNoiseBuffer(0.3);
+    const noiseSource = this.ctx.createBufferSource();
+    noiseSource.buffer = noiseBuffer;
+
+    const noiseFilter = this.ctx.createBiquadFilter();
+    noiseFilter.type = 'bandpass';
+    noiseFilter.frequency.setValueAtTime(1200, now);
+    noiseFilter.frequency.exponentialRampToValueAtTime(400, now + 0.2);
+    noiseFilter.Q.value = 2.0;
+
+    const noiseGain = this.ctx.createGain();
+    noiseGain.gain.setValueAtTime(volume * 0.7, now);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+    noiseSource.connect(noiseFilter);
+    noiseFilter.connect(noiseGain);
+    noiseGain.connect(this.masterGain);
+
+    noiseSource.start(now);
+    noiseSource.stop(now + 0.25);
+
+    // Water bubble pops (2-3 chirps)
+    for (let i = 0; i < 3; i++) {
+      const bubbleOsc = this.ctx.createOscillator();
+      const bubbleGain = this.ctx.createGain();
+      const delay = now + 0.03 * i + Math.random() * 0.02;
+
+      bubbleOsc.type = 'sine';
+      const startF = 350 + Math.random() * 200;
+      bubbleOsc.frequency.setValueAtTime(startF, delay);
+      bubbleOsc.frequency.exponentialRampToValueAtTime(startF * 2.2, delay + 0.07);
+
+      bubbleGain.gain.setValueAtTime(0, delay);
+      bubbleGain.gain.linearRampToValueAtTime(volume * 0.6, delay + 0.01);
+      bubbleGain.gain.exponentialRampToValueAtTime(0.001, delay + 0.08);
+
+      bubbleOsc.connect(bubbleGain);
+      bubbleGain.connect(this.masterGain);
+
+      bubbleOsc.start(delay);
+      bubbleOsc.stop(delay + 0.09);
+    }
+  }
+
+  // Metal / Magnet snap (カチン)
+  public playMetalSnap(velocity: number = 5) {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const volume = Math.min(Math.max(velocity / 8, 0.1), 1.0) * 0.4;
+
+    const osc1 = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc1.type = 'sine';
+    osc2.type = 'triangle';
+    osc1.frequency.setValueAtTime(2400, now);
+    osc1.frequency.exponentialRampToValueAtTime(1800, now + 0.1);
+    osc2.frequency.setValueAtTime(4200, now);
+    osc2.frequency.exponentialRampToValueAtTime(2800, now + 0.08);
+
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + 0.13);
+    osc2.stop(now + 0.13);
+  }
+
+  // Rubber band snap (ビシッ)
+  public playRubberSnap(velocity: number = 6) {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const volume = Math.min(Math.max(velocity / 8, 0.1), 1.0) * 0.45;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(280, now);
+    osc.frequency.exponentialRampToValueAtTime(70, now + 0.12);
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(800, now);
+
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(now);
+    osc.stop(now + 0.15);
+  }
+
+  // Pitagora-style cheerful victory jingle! (ピタゴラスイッチ風ジングル)
+  public playGoalJingle() {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+
+    // Cheerful chime: C5, E5, G5, C6 (Do, Mi, Sol, High Do) with light glockenspiel harmonic
+    const notes = [
+      { f: 523.25, time: 0.0, dur: 0.22 },   // C5
+      { f: 659.25, time: 0.14, dur: 0.22 },  // E5
+      { f: 783.99, time: 0.28, dur: 0.25 },  // G5
+      { f: 1046.50, time: 0.44, dur: 0.65 }  // C6 (held)
+    ];
+
+    notes.forEach((note) => {
+      const osc = this.ctx!.createOscillator();
+      const oscHarmonic = this.ctx!.createOscillator();
+      const gain = this.ctx!.createGain();
+
+      osc.type = 'sine';
+      oscHarmonic.type = 'triangle';
+      osc.frequency.setValueAtTime(note.f, now + note.time);
+      oscHarmonic.frequency.setValueAtTime(note.f * 2, now + note.time);
+
+      gain.gain.setValueAtTime(0, now + note.time);
+      gain.gain.linearRampToValueAtTime(0.35, now + note.time + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + note.time + note.dur);
+
+      osc.connect(gain);
+      oscHarmonic.connect(gain);
+      gain.connect(this.masterGain!);
+
+      osc.start(now + note.time);
+      oscHarmonic.start(now + note.time);
+      osc.stop(now + note.time + note.dur + 0.05);
+      oscHarmonic.stop(now + note.time + note.dur + 0.05);
+    });
+  }
+}
+
+export const soundEngine = new SoundEngine();
