@@ -19,10 +19,11 @@ export class GadgetFactory {
     const isPlayer = data.options?.isPlayerBall ?? true;
     const color = data.options?.color || (isPlayer ? '#ef4444' : '#3b82f6');
 
+    // Glass marble characteristics: crisp bounce, very low rolling resistance
     const marble = Bodies.circle(data.x, data.y, r, {
-      restitution: data.options?.restitution ?? 0.65,
-      friction: data.options?.friction ?? 0.05,
-      frictionAir: 0.001,
+      restitution: data.options?.restitution ?? 0.55,
+      friction: data.options?.friction ?? 0.02,
+      frictionAir: 0.0008,
       density: 0.004, // nice solid marble weight
       label: isPlayer ? 'player_marble' : 'marble',
       render: { fillStyle: color }
@@ -84,10 +85,11 @@ export class GadgetFactory {
     const h = data.options?.height || 16;
     const isStatic = data.options?.isStatic ?? true;
 
+    // Pine/oak wood plank: slight bounce, smooth rolling surface
     const plank = Bodies.rectangle(data.x, data.y, w, h, {
       isStatic,
-      friction: data.options?.friction ?? 0.1,
-      restitution: data.options?.restitution ?? 0.25,
+      friction: data.options?.friction ?? 0.04,
+      restitution: data.options?.restitution ?? 0.22,
       angle: data.angle,
       label: 'plank'
     });
@@ -104,14 +106,16 @@ export class GadgetFactory {
 
   // Book (本)
   public static createBook(data: GadgetData): GadgetBodyBundle {
-    const w = data.options?.width || 32;
-    const h = data.options?.height || 90;
+    const w = data.options?.width || 28;
+    const h = data.options?.height || 85;
 
+    // Heavy hardcover book: solid weight, crisp tip-over response, minimal bounce
     const book = Bodies.rectangle(data.x, data.y, w, h, {
       isStatic: data.options?.isStatic ?? false,
-      friction: 0.4,
-      restitution: 0.1,
-      density: 0.003,
+      friction: 0.45,
+      frictionStatic: 0.7,
+      restitution: 0.08,
+      density: 0.0035,
       angle: data.angle,
       label: 'book'
     });
@@ -128,15 +132,16 @@ export class GadgetFactory {
 
   // Domino (ドミノ)
   public static createDomino(data: GadgetData): GadgetBodyBundle {
-    const w = data.options?.width || 12;
+    const w = data.options?.width || 11;
     const h = data.options?.height || 54;
 
+    // Domino piece: balanced pivot base and energetic momentum transfer for continuous chain reaction
     const domino = Bodies.rectangle(data.x, data.y, w, h, {
       isStatic: false,
       friction: 0.35,
-      frictionStatic: 0.5,
-      restitution: 0.15,
-      density: 0.002,
+      frictionStatic: 0.6,
+      restitution: 0.35,
+      density: 0.0035,
       angle: data.angle,
       label: 'domino'
     });
@@ -156,10 +161,11 @@ export class GadgetFactory {
     const w = data.options?.width || 60;
     const h = data.options?.height || 26;
 
+    // High energy pinball-style bouncer
     const springPad = Bodies.rectangle(data.x, data.y, w, h, {
       isStatic: true,
-      restitution: data.options?.restitution ?? 1.5, // High bounce!
-      friction: 0.02,
+      restitution: data.options?.restitution ?? 1.65, // Dynamic crisp boing bounce
+      friction: 0.01,
       angle: data.angle,
       label: 'spring'
     });
@@ -179,10 +185,12 @@ export class GadgetFactory {
     const plankW = data.options?.width || 220;
     const plankH = 14;
 
+    // Balanced seesaw board: responds smoothly to marble weight without endless fluttering
     const plank = Bodies.rectangle(data.x, data.y, plankW, plankH, {
-      friction: 0.25,
-      restitution: 0.1,
-      density: 0.002,
+      friction: 0.15,
+      frictionStatic: 0.3,
+      restitution: 0.08,
+      density: 0.0018,
       angle: data.angle,
       label: 'seesaw_plank'
     });
@@ -198,7 +206,8 @@ export class GadgetFactory {
       bodyB: plank,
       pointB: { x: 0, y: 0 },
       length: 0,
-      stiffness: 1
+      stiffness: 0.98,
+      damping: 0.02
     });
 
     plank.plugin = { gadgetId: data.id, gadget: data };
@@ -222,27 +231,29 @@ export class GadgetFactory {
     // Bottom plate
     const bottom = Bodies.rectangle(data.x, data.y + h / 2 - thickness / 2, w, thickness, {
       friction: 0.3,
-      restitution: 0.2,
+      restitution: 0.12,
       label: 'paper_cup_part'
     });
     // Left wall
     const leftWall = Bodies.rectangle(data.x - w / 2 + thickness / 2, data.y, thickness, h, {
       friction: 0.3,
-      restitution: 0.2,
+      restitution: 0.12,
       label: 'paper_cup_part'
     });
     // Right wall
     const rightWall = Bodies.rectangle(data.x + w / 2 - thickness / 2, data.y, thickness, h, {
       friction: 0.3,
-      restitution: 0.2,
+      restitution: 0.12,
       label: 'paper_cup_part'
     });
 
+    // Realistic feather-light paper cup
     const cup = Body.create({
       parts: [bottom, leftWall, rightWall],
-      friction: 0.3,
+      friction: 0.25,
+      frictionStatic: 0.4,
       restitution: 0.1,
-      density: 0.0012, // light paper cup
+      density: 0.0008, // Very light paper cup
       label: 'paper_cup'
     });
     Body.setAngle(cup, data.angle);
@@ -267,30 +278,29 @@ export class GadgetFactory {
     const thickness = 8;
     const isStatic = data.options?.isStatic ?? true;
 
-    // Top wall
+    // Top wall - very smooth inner surface
     const topWall = Bodies.rectangle(data.x, data.y - diameter / 2, length, thickness, {
-      friction: 0.05,
-      restitution: 0.2,
+      friction: 0.01,
+      restitution: 0.15,
       label: 'tube_part'
     });
-    // Bottom wall
+    // Bottom wall - low friction chute
     const botWall = Bodies.rectangle(data.x, data.y + diameter / 2, length, thickness, {
-      friction: 0.05,
-      restitution: 0.2,
+      friction: 0.01,
+      restitution: 0.15,
       label: 'tube_part'
     });
 
     const tube = Body.create({
       parts: [topWall, botWall],
       isStatic,
-      friction: 0.05,
+      friction: 0.01,
       label: 'toilet_paper_tube'
     });
     Body.setAngle(tube, data.angle);
     tube.plugin = { gadgetId: data.id, gadget: data };
     topWall.plugin = tube.plugin;
     botWall.plugin = tube.plugin;
-
 
     return {
       gadgetId: data.id,
@@ -306,10 +316,11 @@ export class GadgetFactory {
     const w = data.options?.width || 100;
     const h = 10;
 
+    // Snappy elastic band
     const band = Bodies.rectangle(data.x, data.y, w, h, {
       isStatic: true,
-      restitution: 1.25, // bouncy elasticity
-      friction: 0.1,
+      restitution: 1.35, // High bouncy elasticity
+      friction: 0.05,
       angle: data.angle,
       label: 'rubber_band'
     });
@@ -338,10 +349,12 @@ export class GadgetFactory {
     const bobX = data.x + length * Math.sin(data.angle);
     const bobY = data.y + length * Math.cos(data.angle);
 
+    // Heavy iron weight with minimal air damping for sustained periodic swing
     const bob = Bodies.circle(bobX, bobY, bobRadius, {
-      density: 0.008, // heavy bowling-like bob
-      restitution: 0.4,
-      friction: 0.1,
+      density: 0.009, // Solid iron bob
+      restitution: 0.45,
+      friction: 0.08,
+      frictionAir: 0.0003,
       label: 'pendulum_bob'
     });
 
@@ -349,7 +362,8 @@ export class GadgetFactory {
       bodyA: anchor,
       bodyB: bob,
       length,
-      stiffness: 0.95
+      stiffness: 0.98,
+      damping: 0.001
     });
 
     bob.plugin = { gadgetId: data.id, gadget: data };

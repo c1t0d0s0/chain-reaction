@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, RotateCcw, Grid, ZoomIn, ZoomOut, Maximize2, Video, Edit3 } from 'lucide-react';
+import { Play, Pause, RotateCcw, Grid, ZoomIn, ZoomOut, Maximize2, Video, Edit3, Magnet, Pin } from 'lucide-react';
 import { SimulationSpeed } from '../types';
 
 interface ToolbarProps {
@@ -13,6 +13,10 @@ interface ToolbarProps {
   onSpeedChange: (speed: SimulationSpeed) => void;
   showGrid: boolean;
   onToggleGrid: () => void;
+  snapEnabled: boolean;
+  onToggleSnap: () => void;
+  continuousPlacement: boolean;
+  onToggleContinuousPlacement: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetView: () => void;
@@ -31,6 +35,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onSpeedChange,
   showGrid,
   onToggleGrid,
+  snapEnabled,
+  onToggleSnap,
+  continuousPlacement,
+  onToggleContinuousPlacement,
   onZoomIn,
   onZoomOut,
   onResetView,
@@ -38,22 +46,50 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onToggleFollowMarble,
 }) => {
   return (
-    <div className="h-12 bg-slate-800/90 backdrop-blur border-b border-slate-700/60 px-4 flex items-center justify-between z-20 shadow-sm">
+    <div className="h-12 bg-slate-800/90 backdrop-blur border-b border-slate-700/60 px-4 flex items-center justify-between z-20 shadow-sm select-none">
       {/* Simulation Play / Edit Controls */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-2">
         {mode === 'edit' ? (
           <>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-500/15 border border-sky-500/40 text-sky-300 text-xs font-bold">
               <Edit3 className="w-3.5 h-3.5" />
-              <span>編集モード (初期配置)</span>
+              <span>編集</span>
             </div>
 
             <button
               onClick={onStart}
-              className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-900/30 transition active:scale-95"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-900/30 transition active:scale-95"
             >
               <Play className="w-4 h-4 fill-white" />
-              <span>スタート (再生)</span>
+              <span>スタート</span>
+            </button>
+
+            {/* Snap Toggle Button */}
+            <button
+              onClick={onToggleSnap}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition active:scale-95 ${
+                snapEnabled
+                  ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-sm shadow-amber-500/10'
+                  : 'bg-slate-700/60 border-slate-600 text-slate-400 hover:text-slate-200'
+              }`}
+              title="15°角度＆20pxグリッドスナップ切替"
+            >
+              <Magnet className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">スナップ {snapEnabled ? 'ON' : 'OFF'}</span>
+            </button>
+
+            {/* Continuous Placement Button */}
+            <button
+              onClick={onToggleContinuousPlacement}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition active:scale-95 ${
+                continuousPlacement
+                  ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 shadow-sm shadow-emerald-500/10'
+                  : 'bg-slate-700/60 border-slate-600 text-slate-400 hover:text-slate-200'
+              }`}
+              title="連続スタンプ配置モード切替（同じパーツをタップで連続配置）"
+            >
+              <Pin className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">連続配置 {continuousPlacement ? 'ON' : 'OFF'}</span>
             </button>
           </>
         ) : (

@@ -32,64 +32,73 @@ export const DEFAULT_COURSES: CourseData[] = [
         angle: 0.38, // ~22 degrees slope
         options: { width: 220, height: 16 }
       },
-      // Second Slope Plank (reverse direction)
+      // Second Slope Plank (leads down towards domino shelf)
       {
         id: 'plank-2',
         type: 'plank',
         x: 280,
-        y: 280,
-        angle: -0.32,
-        options: { width: 220, height: 16 }
+        y: 275,
+        angle: 0.30,
+        options: { width: 200, height: 16 }
       },
       // Flat Shelf for Dominoes
       {
         id: 'plank-3',
         type: 'plank',
-        x: 460,
+        x: 490,
         y: 350,
-        angle: 0.05,
-        options: { width: 260, height: 16 }
+        angle: 0.02,
+        options: { width: 300, height: 16 }
       },
-      // Domino Chain (6 pieces)
+      // Domino Chain (6 pieces spaced at 26px)
       { id: 'dom-1', type: 'domino', x: 380, y: 315, angle: 0 },
-      { id: 'dom-2', type: 'domino', x: 415, y: 315, angle: 0 },
-      { id: 'dom-3', type: 'domino', x: 450, y: 315, angle: 0 },
-      { id: 'dom-4', type: 'domino', x: 485, y: 315, angle: 0 },
-      { id: 'dom-5', type: 'domino', x: 520, y: 315, angle: 0 },
-      { id: 'dom-6', type: 'domino', x: 555, y: 315, angle: 0 },
+      { id: 'dom-2', type: 'domino', x: 406, y: 315, angle: 0 },
+      { id: 'dom-3', type: 'domino', x: 432, y: 315, angle: 0 },
+      { id: 'dom-4', type: 'domino', x: 458, y: 315, angle: 0 },
+      { id: 'dom-5', type: 'domino', x: 484, y: 315, angle: 0 },
+      { id: 'dom-6', type: 'domino', x: 510, y: 315, angle: 0 },
       // Upright Book
       {
         id: 'book-1',
         type: 'book',
-        x: 600,
-        y: 300,
+        x: 540,
+        y: 298,
         angle: 0,
-        options: { width: 32, height: 85 }
+        options: { width: 28, height: 85 }
       },
       // Seesaw below the book
       {
         id: 'seesaw-1',
         type: 'seesaw',
-        x: 680,
-        y: 430,
+        x: 650,
+        y: 410,
         angle: -0.15,
         options: { width: 220 }
+      },
+      // Second marble on seesaw triggered by the book
+      {
+        id: 'marble-seesaw',
+        type: 'marble',
+        x: 710,
+        y: 385,
+        angle: 0,
+        options: { isPlayerBall: true, color: '#ef4444', radius: 14 }
       },
       // Guide plank leading to Goal
       {
         id: 'plank-4',
         type: 'plank',
         x: 820,
-        y: 520,
-        angle: 0.22,
+        y: 490,
+        angle: 0.25,
         options: { width: 180, height: 16 }
       },
       // Goal
       {
         id: 'goal-1',
         type: 'goal',
-        x: 930,
-        y: 540,
+        x: 920,
+        y: 520,
         angle: 0
       }
     ]

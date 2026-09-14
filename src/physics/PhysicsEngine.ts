@@ -318,13 +318,14 @@ export class PhysicsEngine {
     // Dynamic bodies that react to forces
     const dynamicBodies = allBodies.filter((b: Matter.Body) => !b.isStatic && !b.isSensor);
 
-    // 1. Fan Wind Field (blows wind in the direction of fan.angle)
+    // 1. Fan Wind Field (realistic aerodynamic wind column)
     for (const fan of fans) {
       const fanAngle = fan.angle;
       // Direction vector of fan blow
       const dir = { x: Math.cos(fanAngle), y: Math.sin(fanAngle) };
-      const range = 260; // Wind stream reach
-      const coneWidth = 75; // Wind stream half-width
+      const range = 300; // Wind stream reach
+      const coneWidth = 85; // Wind stream half-width
+      const power = fan.plugin?.gadget?.options?.power ?? 1.0;
 
       for (const body of dynamicBodies) {
         const dx = body.position.x - fan.position.x;
@@ -335,23 +336,25 @@ export class PhysicsEngine {
           // Perpendicular distance
           const perpDist = Math.abs(-dx * dir.y + dy * dir.x);
           if (perpDist < coneWidth) {
-            // Wind force weakens with distance
-            const falloff = 1 - (proj / range);
-            const windForce = 0.0018 * falloff;
+            const axialFalloff = Math.pow(1 - (proj / range), 1.2);
+            const lateralFalloff = 1 - Math.pow(perpDist / coneWidth, 2);
+            const forceMagnitude = 0.0024 * power * axialFalloff * lateralFalloff;
+
+            // Apply aerodynamic force
             Body.applyForce(body, body.position, {
-              x: dir.x * windForce,
-              y: dir.y * windForce
+              x: dir.x * forceMagnitude,
+              y: dir.y * forceMagnitude
             });
           }
         }
       }
     }
 
-    // 2. Magnet Force Field (attracts metallic/marble objects within radius)
+    // 2. Magnet Force Field (smooth clamped magnetic field)
     for (const magnet of magnets) {
-      const magRadius = 180;
+      const magRadius = 200;
       const polarity = magnet.plugin?.gadget?.options?.polarity ?? 'attract';
-      const strength = (magnet.plugin?.gadget?.options?.power ?? 1.0) * 0.0035;
+      const strength = (magnet.plugin?.gadget?.options?.power ?? 1.0) * 0.004;
 
       for (const body of dynamicBodies) {
         if (body.label.includes('marble') || body.label === 'domino') {
@@ -359,8 +362,9 @@ export class PhysicsEngine {
           const dy = magnet.position.y - body.position.y;
           const dist = Math.hypot(dx, dy);
 
-          if (dist > 10 && dist < magRadius) {
-            const factor = (1 - dist / magRadius) * strength;
+          if (dist > 14 && dist < magRadius) {
+            // Quadratic falloff with minimum distance clamp to prevent explosive spikes
+            const factor = Math.pow(1 - dist / magRadius, 1.8) * strength;
             const sign = polarity === 'attract' ? 1 : -1;
             Body.applyForce(body, body.position, {
               x: (dx / dist) * factor * sign,
@@ -371,7 +375,7 @@ export class PhysicsEngine {
       }
     }
 
-    // 3. Water Buoyancy & Viscous Damping
+    // 3. Water Buoyancy & Gradual Fluid Drag
     for (const water of waters) {
       const wBounds = water.bounds;
       for (const body of dynamicBodies) {
@@ -380,17 +384,41 @@ export class PhysicsEngine {
           bPos.x >= wBounds.min.x && bPos.x <= wBounds.max.x &&
           bPos.y >= wBounds.min.y && bPos.y <= wBounds.max.y
         ) {
-          // Upward buoyant force counteracting gravity + light float
-          const buoyancy = -0.0013 * body.mass;
+          // Submersion depth ratio (gradual entry so objects don't snap upward)
+          const depth = Math.max(0.2, Math.min(1.0, (bPos.y - wBounds.min.y) / 45));
+          const buoyancy = -0.00138 * body.mass * depth;
           Body.applyForce(body, body.position, { x: 0, y: buoyancy });
 
-          // Fluid viscosity drag (damping)
+          // Viscous fluid drag (linear + velocity-dependent resistance)
+          const vx = body.velocity.x;
+          const vy = body.velocity.y;
+          const speed = Math.hypot(vx, vy);
+          const drag = Math.max(0.82, 0.94 - speed * 0.005);
+
           Body.setVelocity(body, {
-            x: body.velocity.x * 0.94,
-            y: body.velocity.y * 0.94
+            x: vx * drag,
+            y: vy * drag
           });
-          Body.setAngularVelocity(body, body.angularVelocity * 0.92);
+          Body.setAngularVelocity(body, body.angularVelocity * 0.88);
         }
+      }
+    }
+
+    // 4. Seesaw tilt limiting & natural travel angle
+    for (const body of dynamicBodies) {
+      if (body.label === 'seesaw_plank') {
+        const initialAngle = body.plugin?.gadget?.angle ?? 0;
+        const relAngle = body.angle - initialAngle;
+        const maxTilt = 0.46; // ~26.3 degrees max travel
+        if (relAngle > maxTilt) {
+          Body.setAngle(body, initialAngle + maxTilt);
+          Body.setAngularVelocity(body, -Math.abs(body.angularVelocity) * 0.2);
+        } else if (relAngle < -maxTilt) {
+          Body.setAngle(body, initialAngle - maxTilt);
+          Body.setAngularVelocity(body, Math.abs(body.angularVelocity) * 0.2);
+        }
+        // Subtle rotational resting damping
+        Body.setAngularVelocity(body, body.angularVelocity * 0.985);
       }
     }
   }

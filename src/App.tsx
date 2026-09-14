@@ -5,7 +5,6 @@ import { DEFAULT_COURSES } from './presets/defaultCourses';
 import { Header } from './components/Header';
 import { Toolbar } from './components/Toolbar';
 import { GadgetPalette } from './components/GadgetPalette';
-import { PropertyInspector } from './components/PropertyInspector';
 import { PhysicsCanvas } from './components/PhysicsCanvas';
 import { GoalModal } from './components/GoalModal';
 import { HelpModal } from './components/HelpModal';
@@ -21,6 +20,8 @@ export const App: React.FC = () => {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [speed, setSpeed] = useState<SimulationSpeed>(1.0);
   const [showGrid, setShowGrid] = useState<boolean>(true);
+  const [snapEnabled, setSnapEnabled] = useState<boolean>(true);
+  const [continuousPlacement, setContinuousPlacement] = useState<boolean>(false);
   const [followMarble, setFollowMarble] = useState<boolean>(false);
   const [isGoalReached, setIsGoalReached] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
@@ -281,6 +282,10 @@ export const App: React.FC = () => {
         onSpeedChange={handleSpeedChange}
         showGrid={showGrid}
         onToggleGrid={() => setShowGrid(!showGrid)}
+        snapEnabled={snapEnabled}
+        onToggleSnap={() => setSnapEnabled(!snapEnabled)}
+        continuousPlacement={continuousPlacement}
+        onToggleContinuousPlacement={() => setContinuousPlacement(!continuousPlacement)}
         onZoomIn={() =>
           setTransform((t) => ({ ...t, scale: Math.min(t.scale * 1.15, 3.0) }))
         }
@@ -311,20 +316,12 @@ export const App: React.FC = () => {
           onGadgetCreated={handleGadgetCreated}
           onGadgetUpdated={handleGadgetUpdated}
           showGrid={showGrid}
+          snapEnabled={snapEnabled}
+          continuousPlacement={continuousPlacement}
           transform={transform}
           onTransformChange={setTransform}
           followMarble={followMarble}
         />
-
-        {selectedGadget && mode === 'edit' && (
-          <PropertyInspector
-            gadget={selectedGadget}
-            onUpdate={handleGadgetUpdated}
-            onDuplicate={handleGadgetDuplicate}
-            onDelete={handleGadgetDelete}
-            onClose={() => setSelectedGadgetId(null)}
-          />
-        )}
       </div>
 
       {/* Goal Celebration Modal */}

@@ -973,35 +973,64 @@ export class CanvasRenderer {
   // Rotation Handle Gizmo (ドラッグして直感的に回転できるハンドル)
   private drawRotationHandle(ctx: CanvasRenderingContext2D, body: Matter.Body) {
     const { x, y } = body.position;
-    const handleDist = 48;
+    const handleDist = 52;
     const handleX = x + Math.cos(body.angle) * handleDist;
     const handleY = y + Math.sin(body.angle) * handleDist;
 
     ctx.save();
     // Connecting dashed line
     ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([3, 3]);
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([4, 3]);
     ctx.beginPath();
     ctx.moveTo(x, y);
     ctx.lineTo(handleX, handleY);
     ctx.stroke();
 
-    // Circle knob
+    // Touch ring outer halo
     ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+    ctx.beginPath();
+    ctx.arc(handleX, handleY, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Circle knob
     ctx.fillStyle = '#0284c7';
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(handleX, handleY, 8, 0, Math.PI * 2);
+    ctx.arc(handleX, handleY, 9, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
-    // Degree readout
+    // Inner dot
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(handleX, handleY, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Degree readout pill badge
     const deg = Math.round(((body.angle * 180) / Math.PI) % 360);
-    ctx.fillStyle = '#f8fafc';
-    ctx.font = '11px monospace';
-    ctx.fillText(`${deg}°`, handleX + 12, handleY + 4);
+    const normalizedDeg = deg < 0 ? deg + 360 : deg;
+    const text = `${normalizedDeg}°`;
+    ctx.font = 'bold 11px monospace';
+    const textMetrics = ctx.measureText(text);
+    const textW = textMetrics.width;
+    const badgeX = handleX + 16;
+    const badgeY = handleY - 8;
+
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+    ctx.strokeStyle = '#0284c7';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(badgeX - 4, badgeY - 10, textW + 8, 16, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.fillStyle = '#38bdf8';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    ctx.fillText(text, badgeX, badgeY + 2);
 
     ctx.restore();
   }
