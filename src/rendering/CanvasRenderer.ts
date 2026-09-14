@@ -37,11 +37,9 @@ export class CanvasRenderer {
     // Render all physical gadget bundles
     const bundles = Array.from(physics.bundles.values());
 
-    // 1. Render background fields (Water, Wind, Magnetic fields) first
+    // 1. Render background fields (Wind, Magnetic fields) first
     for (const bundle of bundles) {
-      if (bundle.type === 'water') {
-        this.drawWater(ctx, bundle.mainBody);
-      } else if (bundle.type === 'fan') {
+      if (bundle.type === 'fan') {
         this.drawFanWind(ctx, bundle.mainBody, physics.isRunning);
       } else if (bundle.type === 'magnet') {
         this.drawMagnetField(ctx, bundle.mainBody);
@@ -96,6 +94,24 @@ export class CanvasRenderer {
         case 'goal':
           this.drawGoal(ctx, bundle.mainBody);
           break;
+        case 'funnel':
+          this.drawFunnel(ctx, bundle.mainBody);
+          break;
+        case 'bell':
+          this.drawBell(ctx, bundle.mainBody);
+          break;
+        case 'paddle_wheel':
+          this.drawPaddleWheel(ctx, bundle);
+          break;
+        case 'pulley':
+          this.drawPulley(ctx, bundle);
+          break;
+        case 'catapult':
+          this.drawCatapult(ctx, bundle);
+          break;
+        case 'faucet':
+          this.drawFaucet(ctx, bundle.mainBody, physics.isRunning);
+          break;
         default:
           this.drawGenericBody(ctx, bundle.mainBody);
       }
@@ -104,6 +120,11 @@ export class CanvasRenderer {
       if (isSelected || isHovered) {
         this.drawHighlight(ctx, bundle.mainBody, isSelected);
       }
+    }
+
+    // 2.5 Draw active water droplets
+    for (const d of physics.waterDrops) {
+      this.drawWaterDrop(ctx, d.body);
     }
 
     // 3. Draw rotation handle gizmo for selected object (in edit mode)
@@ -815,48 +836,6 @@ export class CanvasRenderer {
     ctx.restore();
   }
 
-  // Water Pool (水槽・水たまり)
-  private drawWater(ctx: CanvasRenderingContext2D, body: Matter.Body) {
-    const gadget = body.plugin?.gadget as GadgetData | undefined;
-    const w = gadget?.options?.width || 160;
-    const h = gadget?.options?.height || 90;
-    const { x, y } = body.position;
-
-    ctx.save();
-    ctx.translate(x, y);
-
-    // Semi-transparent blue water body
-    const waterGrad = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
-    waterGrad.addColorStop(0, 'rgba(14, 165, 233, 0.35)');
-    waterGrad.addColorStop(1, 'rgba(3, 105, 161, 0.65)');
-
-    ctx.fillStyle = waterGrad;
-    ctx.fillRect(-w / 2, -h / 2, w, h);
-
-    // Wavy water surface line
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.moveTo(-w / 2, -h / 2);
-    for (let px = -w / 2; px <= w / 2; px += 8) {
-      const wave = Math.sin(this.animTime * 4 + px * 0.08) * 3;
-      ctx.lineTo(px, -h / 2 + wave);
-    }
-    ctx.stroke();
-
-    // Rising bubbles inside water
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-    for (let i = 0; i < 4; i++) {
-      const bx = -w / 3 + i * (w / 4);
-      const by = (h / 2 - 10) - ((this.animTime * 30 + i * 25) % (h - 20));
-      ctx.beginPath();
-      ctx.arc(bx, by, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.restore();
-  }
-
   // Start Gate (スタート台)
   private drawStartGate(ctx: CanvasRenderingContext2D, body: Matter.Body) {
     const { x, y } = body.position;
@@ -1034,4 +1013,566 @@ export class CanvasRenderer {
 
     ctx.restore();
   }
+
+  // Kitchen Funnel / Spiral Bowl (すり鉢ロート・じょうご)
+  private drawFunnel(ctx: CanvasRenderingContext2D, body: Matter.Body) {
+    const { x, y } = body.position;
+    const gadget = body.plugin?.gadget as GadgetData | undefined;
+    const w = gadget?.options?.width || 130;
+    const h = gadget?.options?.height || 75;
+    const holeW = 34;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(body.angle);
+
+    // Drop shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+    ctx.beginPath();
+    ctx.ellipse(0, h / 2, w / 2, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ceramic Funnel Bowl Outer Body
+    const grad = ctx.createLinearGradient(-w / 2, -h / 2, w / 2, h / 2);
+    grad.addColorStop(0, '#f8fafc');
+    grad.addColorStop(0.5, '#e2e8f0');
+    grad.addColorStop(1, '#cbd5e1');
+
+    // Funnel bowl contour
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2, -h / 2);
+    ctx.lineTo(w / 2, -h / 2);
+    ctx.lineTo(holeW / 2 + 4, h / 2 - 12);
+    ctx.lineTo(holeW / 2 + 4, h / 2);
+    ctx.lineTo(-holeW / 2 - 4, h / 2);
+    ctx.lineTo(-holeW / 2 - 4, h / 2 - 12);
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner Bowl Contour (darker interior depth)
+    const innerGrad = ctx.createRadialGradient(0, -h / 4, 8, 0, -h / 4, w / 2);
+    innerGrad.addColorStop(0, '#334155');
+    innerGrad.addColorStop(0.7, '#1e293b');
+    innerGrad.addColorStop(1, '#0f172a');
+
+    ctx.fillStyle = innerGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, -h / 2 + 6, w / 2 - 6, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Concentric spiral/depth rings
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(0, -h / 2 + 18, w * 0.35, 7, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Center hole opening
+    ctx.fillStyle = '#020617';
+    ctx.beginPath();
+    ctx.ellipse(0, h / 2 - 12, holeW / 2, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Bowl outline rim
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Decorative colored rim band (cyan ribbon)
+    ctx.strokeStyle = '#06b6d4';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(0, -h / 2 + 6, w / 2 - 4, 12, 0, 0, Math.PI);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // Desk Bell / Glockenspiel Bar (卓上ベル・鉄琴プレート)
+  private drawBell(ctx: CanvasRenderingContext2D, body: Matter.Body) {
+    const { x, y } = body.position;
+    const gadget = body.plugin?.gadget as GadgetData | undefined;
+    const note = gadget?.options?.note || 'C5';
+    const noteLabels: Record<string, string> = {
+      'C5': 'ド', 'D5': 'レ', 'E5': 'ミ', 'F5': 'ファ',
+      'G5': 'ソ', 'A5': 'ラ', 'B5': 'シ', 'C6': '高ド'
+    };
+    const noteColors: Record<string, string> = {
+      'C5': '#ef4444', 'D5': '#f97316', 'E5': '#eab308', 'F5': '#22c55e',
+      'G5': '#06b6d4', 'A5': '#3b82f6', 'B5': '#a855f7', 'C6': '#ec4899'
+    };
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(body.angle);
+
+    const lastHit = (body.plugin as any)?.lastHitTime || 0;
+    const timeSinceHit = Date.now() - lastHit;
+
+    // Acoustic resonance wave rings on hit
+    if (timeSinceHit < 500) {
+      const progress = timeSinceHit / 500;
+      const radius = 22 + progress * 30;
+      const alpha = (1 - progress) * 0.8;
+      ctx.strokeStyle = `rgba(253, 224, 71, ${alpha})`;
+      ctx.lineWidth = 2.5 * (1 - progress);
+      ctx.beginPath();
+      ctx.arc(0, -6, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Desk bell base plate
+    const baseGrad = ctx.createLinearGradient(-24, 10, 24, 10);
+    baseGrad.addColorStop(0, '#475569');
+    baseGrad.addColorStop(0.5, '#94a3b8');
+    baseGrad.addColorStop(1, '#475569');
+    ctx.fillStyle = baseGrad;
+    ctx.beginPath();
+    ctx.roundRect(-24, 8, 48, 8, 3);
+    ctx.fill();
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Gleaming brass dome
+    const domeGrad = ctx.createRadialGradient(-6, -8, 2, 0, 0, 24);
+    domeGrad.addColorStop(0, '#fef08a'); // specular highlight
+    domeGrad.addColorStop(0.3, '#eab308'); // gold
+    domeGrad.addColorStop(0.7, '#ca8a04'); // rich brass
+    domeGrad.addColorStop(1, '#854d0e'); // dark bronze shadow
+
+    ctx.fillStyle = domeGrad;
+    ctx.beginPath();
+    ctx.arc(0, 8, 22, Math.PI, 0, false);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#fef9c3';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Top plunger shaft & button
+    ctx.fillStyle = '#e2e8f0';
+    ctx.fillRect(-2.5, -18, 5, 8);
+    ctx.beginPath();
+    ctx.ellipse(0, -18, 6, 3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fill();
+    ctx.stroke();
+
+    // Note badge on bell dome
+    const badgeColor = noteColors[note] || '#ef4444';
+    const noteText = noteLabels[note] || note;
+    ctx.fillStyle = badgeColor;
+    ctx.beginPath();
+    ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(noteText, 0, 0.5);
+
+    ctx.restore();
+  }
+
+  // Paddle Wheel (回転パドル水車)
+  private drawPaddleWheel(ctx: CanvasRenderingContext2D, bundle: { mainBody: Matter.Body }) {
+    const wheel = bundle.mainBody;
+    const { x, y } = wheel.position;
+    const spokeCount = (wheel.plugin?.gadget?.options?.spokes as number) || 4;
+    const diameter = 96;
+    const r = diameter / 2;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(wheel.angle);
+
+    // Drop shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.beginPath();
+    ctx.arc(2, 3, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw paddles
+    const paddleGrad = ctx.createLinearGradient(-r, 0, r, 0);
+    paddleGrad.addColorStop(0, '#b45309');
+    paddleGrad.addColorStop(0.5, '#f59e0b');
+    paddleGrad.addColorStop(1, '#b45309');
+
+    const count = spokeCount === 6 ? 6 : 4;
+    const step = (Math.PI * 2) / count;
+
+    for (let i = 0; i < count; i++) {
+      const ang = i * step;
+      ctx.save();
+      ctx.rotate(ang);
+
+      // Wooden paddle blade
+      ctx.fillStyle = paddleGrad;
+      ctx.beginPath();
+      ctx.roundRect(8, -6, r - 8, 12, 3);
+      ctx.fill();
+      ctx.strokeStyle = '#78350f';
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+
+      // Paddle end scoop rim
+      ctx.fillStyle = '#d97706';
+      ctx.fillRect(r - 7, -8, 6, 16);
+      ctx.strokeStyle = '#fde68a';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(r - 7, -8, 6, 16);
+
+      ctx.restore();
+    }
+
+    // Central hub & brass bearing pin
+    const hubGrad = ctx.createRadialGradient(-3, -3, 2, 0, 0, 16);
+    hubGrad.addColorStop(0, '#fef08a');
+    hubGrad.addColorStop(0.5, '#d97706');
+    hubGrad.addColorStop(1, '#78350f');
+
+    ctx.fillStyle = hubGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#fef3c7';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Axle bolt
+    ctx.fillStyle = '#334155';
+    ctx.beginPath();
+    ctx.arc(0, 0, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // Pulley & Bucket Elevator (滑車バケツ・エレベーター)
+  private drawPulley(ctx: CanvasRenderingContext2D, bundle: { bodies: Matter.Body[]; mainBody: Matter.Body }) {
+    const anchor = bundle.mainBody;
+    const { bucketLeft, bucketRight } = anchor.plugin || {};
+    const { x, y } = anchor.position;
+
+    ctx.save();
+
+    // 1. Pulley Wheel Anchor & Bracket
+    ctx.fillStyle = '#475569';
+    ctx.fillRect(x - 3, y - 24, 6, 24);
+    ctx.strokeStyle = '#64748b';
+    ctx.strokeRect(x - 3, y - 24, 6, 24);
+
+    // Pulley grooved wheel
+    const wheelGrad = ctx.createRadialGradient(x - 3, y - 3, 2, x, y, 16);
+    wheelGrad.addColorStop(0, '#94a3b8');
+    wheelGrad.addColorStop(0.6, '#475569');
+    wheelGrad.addColorStop(1, '#1e293b');
+
+    ctx.fillStyle = wheelGrad;
+    ctx.beginPath();
+    ctx.arc(x, y, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Axle pin
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Suspension Ropes & Buckets
+    if (bucketLeft && bucketRight) {
+      ctx.strokeStyle = '#fde68a'; // hemp rope color
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      // Left rope
+      ctx.moveTo(x - 14, y);
+      ctx.lineTo(bucketLeft.position.x, bucketLeft.position.y - 10);
+      // Over wheel arc
+      ctx.arc(x, y, 14, Math.PI, 0, false);
+      // Right rope
+      ctx.lineTo(bucketRight.position.x, bucketRight.position.y - 10);
+      ctx.stroke();
+
+      // 3. Draw Buckets
+      const drawBucket = (b: Matter.Body) => {
+        ctx.save();
+        ctx.translate(b.position.x, b.position.y);
+        ctx.rotate(b.angle);
+
+        const bW = 46;
+        const bH = 34;
+
+        // Wire bail handle
+        ctx.strokeStyle = '#94a3b8';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(-bW / 2 + 4, -bH / 2 + 6);
+        ctx.lineTo(0, -bH / 2 - 10);
+        ctx.lineTo(bW / 2 - 4, -bH / 2 + 6);
+        ctx.stroke();
+
+        // Wooden bucket body
+        const bucketGrad = ctx.createLinearGradient(-bW / 2, 0, bW / 2, 0);
+        bucketGrad.addColorStop(0, '#b45309');
+        bucketGrad.addColorStop(0.5, '#d97706');
+        bucketGrad.addColorStop(1, '#b45309');
+
+        ctx.fillStyle = bucketGrad;
+        ctx.beginPath();
+        ctx.roundRect(-bW / 2, -bH / 2 + 4, bW, bH - 4, [2, 2, 8, 8]);
+        ctx.fill();
+        ctx.strokeStyle = '#fde68a';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        // Metal bands
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(-bW / 2 + 1, -bH / 2 + 12, bW - 2, 3);
+        ctx.fillRect(-bW / 2 + 1, bH / 2 - 8, bW - 2, 3);
+
+        ctx.restore();
+      };
+
+      drawBucket(bucketLeft);
+      drawBucket(bucketRight);
+    }
+
+    ctx.restore();
+  }
+
+  // Spoon Lever Catapult (てこカタパルト・跳ね上げスプーン)
+  private drawCatapult(ctx: CanvasRenderingContext2D, bundle: { bodies: Matter.Body[]; mainBody: Matter.Body }) {
+    const arm = bundle.bodies.find(b => b.label === 'catapult_arm') || bundle.mainBody;
+    const fulcrum = bundle.bodies.find(b => b.label === 'catapult_fulcrum');
+
+    // 1. Fulcrum Stand
+    if (fulcrum) {
+      ctx.save();
+      ctx.translate(fulcrum.position.x, fulcrum.position.y);
+      ctx.fillStyle = '#64748b';
+      ctx.beginPath();
+      ctx.moveTo(0, -14);
+      ctx.lineTo(16, 14);
+      ctx.lineTo(-16, 14);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Pivot bolt
+      ctx.fillStyle = '#f8fafc';
+      ctx.beginPath();
+      ctx.arc(0, -12, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 2. Catapult Lever Arm
+    if (arm) {
+      ctx.save();
+      ctx.translate(arm.position.x, arm.position.y);
+      ctx.rotate(arm.angle);
+
+      // Wooden lever bar
+      const barGrad = ctx.createLinearGradient(-60, 0, 100, 0);
+      barGrad.addColorStop(0, '#b45309');
+      barGrad.addColorStop(0.5, '#d97706');
+      barGrad.addColorStop(1, '#b45309');
+
+      ctx.fillStyle = barGrad;
+      ctx.beginPath();
+      ctx.roundRect(-60, -5, 160, 10, 3);
+      ctx.fill();
+      ctx.strokeStyle = '#78350f';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Left heavy striker anvil pad
+      ctx.fillStyle = '#334155';
+      ctx.beginPath();
+      ctx.roundRect(-70, -18, 36, 14, 2);
+      ctx.fill();
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      // Target red dot
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.arc(-52, -11, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Right cupped spoon launcher
+      ctx.fillStyle = '#e2e8f0'; // white/chrome spoon
+      ctx.beginPath();
+      ctx.arc(92, -8, 14, 0, Math.PI, false);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+  }
+
+  // Faucet (蛇口 - 金属パイプ・ノズル・蛇口ハンドル)
+  private drawFaucet(ctx: CanvasRenderingContext2D, body: Matter.Body, isRunning: boolean) {
+    const { x, y } = body.position;
+    const gadget = body.plugin?.gadget as GadgetData | undefined;
+    const isOpen = body.plugin?.isOpen ?? (gadget?.options?.autoFlow ?? true);
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(body.angle);
+
+    // Drop shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+    ctx.beginPath();
+    ctx.ellipse(4, 18, 22, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wall mounting flange (left circular plate)
+    ctx.fillStyle = '#64748b';
+    ctx.beginPath();
+    ctx.roundRect(-26, -12, 8, 24, 2);
+    ctx.fill();
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Chrome pipe gradient
+    const pipeGrad = ctx.createLinearGradient(0, -8, 0, 8);
+    pipeGrad.addColorStop(0, '#f1f5f9');
+    pipeGrad.addColorStop(0.3, '#cbd5e1');
+    pipeGrad.addColorStop(0.7, '#64748b');
+    pipeGrad.addColorStop(1, '#475569');
+
+    // Horizontal pipe neck
+    ctx.fillStyle = pipeGrad;
+    ctx.beginPath();
+    ctx.roundRect(-20, -7, 28, 14, 2);
+    ctx.fill();
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Curved elbow bend down into nozzle spout
+    const spoutGrad = ctx.createLinearGradient(6, 0, 22, 0);
+    spoutGrad.addColorStop(0, '#f8fafc');
+    spoutGrad.addColorStop(0.4, '#cbd5e1');
+    spoutGrad.addColorStop(0.8, '#64748b');
+    spoutGrad.addColorStop(1, '#334155');
+
+    ctx.fillStyle = spoutGrad;
+    ctx.beginPath();
+    ctx.moveTo(8, -7);
+    ctx.quadraticCurveTo(22, -7, 22, 8);
+    ctx.lineTo(22, 20);
+    ctx.lineTo(8, 20);
+    ctx.lineTo(8, 7);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    // Spout aerator nozzle tip
+    ctx.fillStyle = '#475569';
+    ctx.beginPath();
+    ctx.roundRect(7, 18, 16, 4, 1);
+    ctx.fill();
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Faucet Handle Valve (on top of pipe at x = -2)
+    ctx.fillStyle = '#cbd5e1';
+    ctx.fillRect(-4, -14, 4, 8);
+
+    // Cross handle (Classic Red / Blue tap wheel)
+    const handleColor = isOpen ? '#ef4444' : '#3b82f6';
+    const handleAngle = isOpen ? (isRunning ? (Date.now() / 150) % (Math.PI * 2) : 0.3) : 0;
+
+    ctx.save();
+    ctx.translate(-2, -16);
+    ctx.rotate(handleAngle);
+
+    // 4-prong cross handle
+    ctx.fillStyle = handleColor;
+    ctx.beginPath();
+    ctx.roundRect(-12, -3.5, 24, 7, 3);
+    ctx.roundRect(-3.5, -12, 7, 24, 3);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Center screw cap
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+
+    // If flowing, draw forming water droplet glint at the spout
+    if (isOpen) {
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
+      ctx.beginPath();
+      ctx.arc(15, 22, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(14, 21, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
+  }
+
+  // Water Droplet (光沢のある水滴)
+  private drawWaterDrop(ctx: CanvasRenderingContext2D, body: Matter.Body) {
+    const { x, y } = body.position;
+    const r = (body.circleRadius as number) || 5;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Glassy cyan/blue droplet gradient
+    const grad = ctx.createRadialGradient(-r * 0.3, -r * 0.3, r * 0.1, 0, 0, r);
+    grad.addColorStop(0, '#bae6fd');
+    grad.addColorStop(0.5, '#38bdf8');
+    grad.addColorStop(0.9, '#0284c7');
+    grad.addColorStop(1, '#0369a1');
+
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Outer liquid glow
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+
+    // Specular white glint
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.beginPath();
+    ctx.arc(-r * 0.35, -r * 0.35, r * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
 }
+

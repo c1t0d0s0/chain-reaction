@@ -386,6 +386,212 @@ class SoundEngine {
       oscHarmonic.stop(now + note.time + note.dur + 0.05);
     });
   }
+
+  // Desk Bell / Glockenspiel Chime (澄んだチーン♪音)
+  public playDeskBell(noteStr: string = 'C5', velocity: number = 6) {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const volume = Math.min(Math.max(velocity / 8, 0.15), 1.0) * 0.55;
+
+    const noteFreqs: Record<string, number> = {
+      'C5': 523.25,
+      'D5': 587.33,
+      'E5': 659.25,
+      'F5': 698.46,
+      'G5': 783.99,
+      'A5': 880.00,
+      'B5': 987.77,
+      'C6': 1046.50
+    };
+
+    const fundamental = noteFreqs[noteStr] || 523.25;
+
+    // Metallic bell: fundamental + distinct inharmonic bell overtones (2.76x and 5.4x)
+    const osc1 = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const osc3 = this.ctx.createOscillator();
+
+    const gain1 = this.ctx.createGain();
+    const gain2 = this.ctx.createGain();
+    const gain3 = this.ctx.createGain();
+
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(fundamental, now);
+
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(fundamental * 2.76, now);
+
+    osc3.type = 'sine';
+    osc3.frequency.setValueAtTime(fundamental * 5.4, now);
+
+    // Fundamental ring (longer decay: ~1.2s)
+    gain1.gain.setValueAtTime(volume * 0.7, now);
+    gain1.gain.exponentialRampToValueAtTime(0.0005, now + 1.2);
+
+    // Minor third overtone (decay: ~0.6s)
+    gain2.gain.setValueAtTime(volume * 0.35, now);
+    gain2.gain.exponentialRampToValueAtTime(0.0005, now + 0.6);
+
+    // High shimmer (decay: ~0.3s)
+    gain3.gain.setValueAtTime(volume * 0.2, now);
+    gain3.gain.exponentialRampToValueAtTime(0.0005, now + 0.3);
+
+    osc1.connect(gain1);
+    osc2.connect(gain2);
+    osc3.connect(gain3);
+
+    gain1.connect(this.masterGain);
+    gain2.connect(this.masterGain);
+    gain3.connect(this.masterGain);
+
+    osc1.start(now);
+    osc2.start(now);
+    osc3.start(now);
+
+    osc1.stop(now + 1.25);
+    osc2.stop(now + 0.65);
+    osc3.stop(now + 0.35);
+  }
+
+  // Funnel / Spiral Bowl swirl sound (シャラシャラ…陶器・ボウル回転音)
+  public playFunnelSwirl(velocity: number = 4) {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const volume = Math.min(Math.max(velocity / 8, 0.1), 0.7) * 0.25;
+
+    const noiseBuffer = this.createNoiseBuffer(0.4);
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = noiseBuffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(950, now);
+    filter.frequency.exponentialRampToValueAtTime(1400, now + 0.35);
+    filter.Q.value = 4.5;
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    noise.start(now);
+    noise.stop(now + 0.4);
+  }
+
+  // Pulley / Rope creak sound (ギギッ / キュッ)
+  public playPulleyCreak(speed: number = 2) {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const volume = Math.min(Math.max(speed / 6, 0.08), 0.5) * 0.22;
+
+    const osc = this.ctx.createOscillator();
+    const filter = this.ctx.createBiquadFilter();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(320 + Math.random() * 80, now);
+    osc.frequency.linearRampToValueAtTime(220, now + 0.12);
+
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(600, now);
+    filter.Q.value = 5;
+
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(now);
+    osc.stop(now + 0.15);
+  }
+
+  // Catapult spoon fling sound (カツン！ピュン)
+  public playCatapultLaunch(velocity: number = 8) {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const volume = Math.min(Math.max(velocity / 8, 0.2), 1.0) * 0.45;
+
+    // Heavy wooden smack
+    this.playWoodImpact(velocity * 1.5);
+
+    // Whistle/whoosh swing
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(180, now);
+    osc.frequency.exponentialRampToValueAtTime(580, now + 0.09);
+    osc.frequency.exponentialRampToValueAtTime(240, now + 0.22);
+
+    gain.gain.setValueAtTime(volume * 0.5, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(now);
+    osc.stop(now + 0.25);
+  }
+
+  // Paddle Wheel light wooden ratchet click (カラッ)
+  public playPaddleWheelClick(velocity: number = 3) {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+    const volume = Math.min(Math.max(velocity / 6, 0.05), 0.4) * 0.25;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(850 + Math.random() * 200, now);
+    osc.frequency.exponentialRampToValueAtTime(200, now + 0.04);
+
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(now);
+    osc.stop(now + 0.05);
+  }
+
+  // Delicate water droplet drip sound ("ポタッ", "ピチョン")
+  public playWaterDrip(volume: number = 0.25) {
+    this.initContext();
+    if (!this.ctx || !this.masterGain) return;
+    const now = this.ctx.currentTime;
+
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = 'sine';
+    const startF = 1750 + Math.random() * 400;
+    osc.frequency.setValueAtTime(startF, now);
+    osc.frequency.exponentialRampToValueAtTime(startF * 1.7, now + 0.04);
+    osc.frequency.exponentialRampToValueAtTime(startF * 0.9, now + 0.08);
+
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(volume * 0.35, now + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+
+    osc.connect(gain);
+    gain.connect(this.masterGain);
+
+    osc.start(now);
+    osc.stop(now + 0.1);
+  }
 }
 
 export const soundEngine = new SoundEngine();
+

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GadgetData } from '../types';
 import { Trash2, Copy, X, RotateCw, Sliders, ChevronDown, ChevronUp } from 'lucide-react';
+import { soundEngine } from '../audio/SoundEngine';
 
 interface PropertyInspectorProps {
   gadget: GadgetData | null;
@@ -217,8 +218,8 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
           )}
         </div>
 
-        {/* Width / Length Slider for Planks, Tubes, Water */}
-        {['plank', 'toilet_paper_tube', 'water', 'rubber_band', 'seesaw'].includes(currentGadget.type) && (
+        {/* Width / Length Slider for Planks, Tubes, Bands, Seesaw */}
+        {['plank', 'toilet_paper_tube', 'rubber_band', 'seesaw'].includes(currentGadget.type) && (
           <div>
             <div className="flex justify-between items-center mb-1.5">
               <span className="text-slate-300 font-medium">長さ / 幅</span>
@@ -324,6 +325,148 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                 value={currentGadget.options?.power ?? 1.0}
                 onChange={(e) => handlePowerChange(Number(e.target.value))}
                 className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Bell Note / Pitch Picker */}
+        {currentGadget.type === 'bell' && (
+          <div className="space-y-2">
+            <span className="text-slate-300 font-medium block">ベルの音階 (音板):</span>
+            <div className="grid grid-cols-4 gap-1.5">
+              {[
+                { note: 'C5', label: 'ド', bg: 'bg-red-500 hover:bg-red-600' },
+                { note: 'D5', label: 'レ', bg: 'bg-orange-500 hover:bg-orange-600' },
+                { note: 'E5', label: 'ミ', bg: 'bg-yellow-500 hover:bg-yellow-600' },
+                { note: 'F5', label: 'ファ', bg: 'bg-green-500 hover:bg-green-600' },
+                { note: 'G5', label: 'ソ', bg: 'bg-cyan-500 hover:bg-cyan-600' },
+                { note: 'A5', label: 'ラ', bg: 'bg-blue-500 hover:bg-blue-600' },
+                { note: 'B5', label: 'シ', bg: 'bg-purple-500 hover:bg-purple-600' },
+                { note: 'C6', label: '高ド', bg: 'bg-pink-500 hover:bg-pink-600' },
+              ].map((item) => {
+                const isCurrent = (currentGadget.options?.note || 'C5') === item.note;
+                return (
+                  <button
+                    key={item.note}
+                    type="button"
+                    onClick={() => {
+                      updateGadget({ options: { note: item.note as any } });
+                      soundEngine.playDeskBell(item.note, 7);
+                    }}
+                    className={`py-1.5 px-1 rounded-lg text-xs font-bold transition border flex flex-col items-center gap-0.5 ${
+                      isCurrent
+                        ? `${item.bg} text-white border-white shadow-md shadow-black/50 scale-105 ring-2 ring-white/50`
+                        : 'bg-slate-800/90 border-slate-700 text-slate-300 hover:text-white'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    <span className="text-[9px] font-mono opacity-80">{item.note}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Paddle Wheel Spoke Count */}
+        {currentGadget.type === 'paddle_wheel' && (
+          <div>
+            <span className="text-slate-300 font-medium block mb-1.5">羽根の枚数</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => updateGadget({ options: { spokes: 4 } })}
+                className={`flex-1 py-1.5 rounded border text-center transition ${
+                  (currentGadget.options?.spokes ?? 4) === 4
+                    ? 'bg-amber-600/30 border-amber-500 text-amber-300 font-bold'
+                    : 'bg-slate-800 border-slate-700 text-slate-400'
+                }`}
+              >
+                4枚 (十字)
+              </button>
+              <button
+                type="button"
+                onClick={() => updateGadget({ options: { spokes: 6 } })}
+                className={`flex-1 py-1.5 rounded border text-center transition ${
+                  currentGadget.options?.spokes === 6
+                    ? 'bg-amber-600/30 border-amber-500 text-amber-300 font-bold'
+                    : 'bg-slate-800 border-slate-700 text-slate-400'
+                }`}
+              >
+                6枚 (六角星)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Pulley Rope Span */}
+        {currentGadget.type === 'pulley' && (
+          <div>
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-slate-300 font-medium">ロープ間隔 (スパン)</span>
+              <span className="font-mono text-emerald-300 font-bold">
+                {currentGadget.options?.span || 140}px
+              </span>
+            </div>
+            <input
+              type="range"
+              min="100"
+              max="240"
+              step="10"
+              value={currentGadget.options?.span || 140}
+              onChange={(e) => updateGadget({ options: { span: Number(e.target.value) } })}
+              className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+            />
+          </div>
+        )}
+
+        {/* Faucet Water Stream Controls */}
+        {currentGadget.type === 'faucet' && (
+          <div className="space-y-3">
+            <div>
+              <span className="text-slate-300 font-medium block mb-1">出水モード</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => updateGadget({ options: { autoFlow: true } })}
+                  className={`flex-1 py-1.5 rounded border text-center transition ${
+                    (currentGadget.options?.autoFlow ?? true)
+                      ? 'bg-sky-600/30 border-sky-500 text-sky-300 font-bold'
+                      : 'bg-slate-800 border-slate-700 text-slate-400'
+                  }`}
+                >
+                  常時水を出す
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateGadget({ options: { autoFlow: false } })}
+                  className={`flex-1 py-1.5 rounded border text-center transition ${
+                    currentGadget.options?.autoFlow === false
+                      ? 'bg-amber-600/30 border-amber-500 text-amber-300 font-bold'
+                      : 'bg-slate-800 border-slate-700 text-slate-400'
+                  }`}
+                >
+                  衝撃で開く
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-slate-300 font-medium">水流の強さ (滴下ペース)</span>
+                <span className="font-mono text-sky-300 font-bold">
+                  {(currentGadget.options?.flowRate ?? 1.0).toFixed(1)}x
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="2.5"
+                step="0.1"
+                value={currentGadget.options?.flowRate ?? 1.0}
+                onChange={(e) => updateGadget({ options: { flowRate: Number(e.target.value) } })}
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500"
               />
             </div>
           </div>

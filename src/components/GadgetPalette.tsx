@@ -14,8 +14,13 @@ import {
   Activity,
   Wind,
   Compass,
-  Droplets,
-  Radio
+  Radio,
+  Filter,
+  Bell,
+  RotateCw,
+  ArrowUpDown,
+  CornerUpRight,
+  Droplet
 } from 'lucide-react';
 
 interface PaletteItem {
@@ -44,10 +49,10 @@ const PALETTE_ITEMS: PaletteItem[] = [
   },
   {
     type: 'marble',
-    label: '赤いビー玉',
+    label: 'ビー玉',
     category: 'core',
     description: '転がるメインボール',
-    icon: <CircleDot className="w-5 h-5 text-red-500 fill-red-500/30" />
+    icon: <CircleDot className="w-5 h-5 text-sky-400 fill-sky-400/30" />
   },
 
   // Ramps & Chutes
@@ -73,13 +78,41 @@ const PALETTE_ITEMS: PaletteItem[] = [
     icon: <BookOpen className="w-5 h-5 text-blue-400" />
   },
 
-  // Chain Reactions
+  // Chain Reactions & Interactive Gimmicks
   {
     type: 'domino',
     label: 'ドミノ',
     category: 'reaction',
     description: '連鎖して次々倒れるピース',
     icon: <Layers className="w-5 h-5 text-slate-200" />
+  },
+  {
+    type: 'bell',
+    label: '卓上ベル・鉄琴',
+    category: 'reaction',
+    description: '澄んだ音色（ド〜高ド）を奏でる',
+    icon: <Bell className="w-5 h-5 text-yellow-400" />
+  },
+  {
+    type: 'funnel',
+    label: 'すり鉢ロート',
+    category: 'reaction',
+    description: '渦を巻いて減速し下へ落とす',
+    icon: <Filter className="w-5 h-5 text-cyan-400" />
+  },
+  {
+    type: 'paddle_wheel',
+    label: '回転パドル水車',
+    category: 'reaction',
+    description: '衝突や風・水で回る工作水車',
+    icon: <RotateCw className="w-5 h-5 text-amber-500" />
+  },
+  {
+    type: 'pulley',
+    label: '滑車バケツ',
+    category: 'reaction',
+    description: '重みで片方が下がり反対側が上昇',
+    icon: <ArrowUpDown className="w-5 h-5 text-emerald-400" />
   },
   {
     type: 'seesaw',
@@ -104,6 +137,13 @@ const PALETTE_ITEMS: PaletteItem[] = [
   },
 
   // Bounce & Elastic
+  {
+    type: 'catapult',
+    label: 'てこカタパルト',
+    category: 'bounce',
+    description: 'てこの原理でボールを高く跳ね上げ',
+    icon: <CornerUpRight className="w-5 h-5 text-orange-400" />
+  },
   {
     type: 'spring',
     label: 'バネ',
@@ -135,11 +175,11 @@ const PALETTE_ITEMS: PaletteItem[] = [
     icon: <Compass className="w-5 h-5 text-indigo-400" />
   },
   {
-    type: 'water',
-    label: '水槽・水たまり',
+    type: 'faucet',
+    label: '蛇口 (水滴)',
     category: 'field',
-    description: '浮力と粘性抵抗、水しぶき',
-    icon: <Droplets className="w-5 h-5 text-cyan-400" />
+    description: '水滴を注いで水車を回す',
+    icon: <Droplet className="w-5 h-5 text-sky-400 fill-sky-400/30" />
   },
 ];
 

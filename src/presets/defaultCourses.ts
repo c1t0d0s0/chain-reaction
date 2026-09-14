@@ -211,16 +211,7 @@ export const DEFAULT_COURSES: CourseData[] = [
         angle: 0.45,
         options: { width: 200, height: 16 }
       },
-      // Water Pool
-      {
-        id: 'water-1',
-        type: 'water',
-        x: 320,
-        y: 260,
-        angle: 0,
-        options: { width: 160, height: 80 }
-      },
-      // Floor under water
+      // Transition Plank
       {
         id: 'plank-w-bottom',
         type: 'plank',
@@ -270,6 +261,155 @@ export const DEFAULT_COURSES: CourseData[] = [
         type: 'goal',
         x: 850,
         y: 430,
+        angle: 0
+      }
+    ]
+  },
+  {
+    id: 'course-4',
+    title: '4. ピタゴラからくり大実験 (新登場ギミック)',
+    description: '回転水車、音階ベル（ド・ミ・ソ♪）、すり鉢ロートの渦巻き、てこカタパルトの跳ね上げが連鎖する大実験コースです。',
+    gadgets: [
+      // Start Gate
+      {
+        id: 'start-4',
+        type: 'start_gate',
+        x: 100,
+        y: 110,
+        angle: 0
+      },
+      // Player Marble
+      {
+        id: 'marble-4-1',
+        type: 'marble',
+        x: 100,
+        y: 85,
+        angle: 0,
+        options: { isPlayerBall: true, color: '#ef4444', radius: 14 }
+      },
+      // First slope plank leading to paddle wheel
+      {
+        id: 'plank-4-1',
+        type: 'plank',
+        x: 180,
+        y: 150,
+        angle: 0.35,
+        options: { width: 180, height: 16 }
+      },
+      // Faucet pouring water onto paddle wheel
+      {
+        id: 'faucet-4-1',
+        type: 'faucet',
+        x: 260,
+        y: 110,
+        angle: 0,
+        options: { autoFlow: true, flowRate: 1.2 }
+      },
+      // Paddle Wheel
+      {
+        id: 'wheel-4-1',
+        type: 'paddle_wheel',
+        x: 290,
+        y: 190,
+        angle: 0.2,
+        options: { spokes: 4 }
+      },
+      // Guide plank under paddle wheel
+      {
+        id: 'plank-4-2',
+        type: 'plank',
+        x: 350,
+        y: 260,
+        angle: 0.32,
+        options: { width: 140, height: 16 }
+      },
+      // Musical Bell 1: ド (C5)
+      {
+        id: 'bell-c5',
+        type: 'bell',
+        x: 410,
+        y: 285,
+        angle: 0,
+        options: { note: 'C5' }
+      },
+      // Musical Bell 2: ミ (E5)
+      {
+        id: 'bell-e5',
+        type: 'bell',
+        x: 470,
+        y: 315,
+        angle: 0,
+        options: { note: 'E5' }
+      },
+      // Musical Bell 3: ソ (G5)
+      {
+        id: 'bell-g5',
+        type: 'bell',
+        x: 530,
+        y: 345,
+        angle: 0,
+        options: { note: 'G5' }
+      },
+      // Slope leading into Funnel
+      {
+        id: 'plank-4-3',
+        type: 'plank',
+        x: 590,
+        y: 375,
+        angle: 0.30,
+        options: { width: 120, height: 16 }
+      },
+      // Kitchen Funnel (すり鉢ロート)
+      {
+        id: 'funnel-4-1',
+        type: 'funnel',
+        x: 680,
+        y: 430,
+        angle: 0,
+        options: { width: 130, height: 75 }
+      },
+      // Catapult below funnel outlet
+      // Catapult pivot at (730, 560): left anvil pad is around x=678 (directly under funnel spout x=680!)
+      {
+        id: 'catapult-4-1',
+        type: 'catapult',
+        x: 730,
+        y: 560,
+        angle: 0
+      },
+      // Golden marble placed on the catapult spoon
+      {
+        id: 'marble-gold',
+        type: 'marble',
+        x: 820,
+        y: 535,
+        angle: 0,
+        options: { isPlayerBall: true, color: '#f59e0b', radius: 14 }
+      },
+      // Receiving ramp for catapulted ball
+      {
+        id: 'plank-4-4',
+        type: 'plank',
+        x: 940,
+        y: 480,
+        angle: 0.22,
+        options: { width: 180, height: 16 }
+      },
+      // High Bell: 高ド (C6) on the ramp
+      {
+        id: 'bell-c6',
+        type: 'bell',
+        x: 980,
+        y: 450,
+        angle: 0,
+        options: { note: 'C6' }
+      },
+      // Goal
+      {
+        id: 'goal-4',
+        type: 'goal',
+        x: 1060,
+        y: 510,
         angle: 0
       }
     ]

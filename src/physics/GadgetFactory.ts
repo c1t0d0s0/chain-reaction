@@ -415,24 +415,275 @@ export class GadgetFactory {
     };
   }
 
-  // Water Pool (水槽・水たまり - Buoyancy & fluid drag zone)
-  public static createWater(data: GadgetData): GadgetBodyBundle {
-    const w = data.options?.width || 160;
-    const h = data.options?.height || 90;
+  // Kitchen Funnel / Spiral Bowl (すり鉢ロート・じょうご)
+  public static createFunnel(data: GadgetData): GadgetBodyBundle {
+    const w = data.options?.width || 130;
+    const h = data.options?.height || 75;
+    const thickness = 8;
+    const holeWidth = 34;
 
-    const water = Bodies.rectangle(data.x, data.y, w, h, {
+    // Left sloped guide
+    const leftSlope = Bodies.rectangle(
+      data.x - w / 4 - holeWidth / 4,
+      data.y - h / 4,
+      w * 0.52,
+      thickness,
+      {
+        angle: 0.58,
+        friction: 0.02,
+        restitution: 0.15,
+        isStatic: true,
+        label: 'funnel_wall'
+      }
+    );
+
+    // Right sloped guide
+    const rightSlope = Bodies.rectangle(
+      data.x + w / 4 + holeWidth / 4,
+      data.y - h / 4,
+      w * 0.52,
+      thickness,
+      {
+        angle: -0.58,
+        friction: 0.02,
+        restitution: 0.15,
+        isStatic: true,
+        label: 'funnel_wall'
+      }
+    );
+
+    // Inner vortex swirl sensor area
+    const vortexSensor = Bodies.circle(data.x, data.y - 6, 36, {
       isStatic: true,
       isSensor: true,
-      label: 'water'
+      label: 'funnel_vortex'
     });
-    water.plugin = { gadgetId: data.id, gadget: data };
+
+    const funnel = Body.create({
+      parts: [leftSlope, rightSlope, vortexSensor],
+      isStatic: true,
+      label: 'funnel'
+    });
+    Body.setAngle(funnel, data.angle);
+    funnel.plugin = { gadgetId: data.id, gadget: data };
+    leftSlope.plugin = funnel.plugin;
+    rightSlope.plugin = funnel.plugin;
+    vortexSensor.plugin = funnel.plugin;
 
     return {
       gadgetId: data.id,
-      type: 'water',
-      bodies: [water],
+      type: 'funnel',
+      bodies: [funnel],
       constraints: [],
-      mainBody: water
+      mainBody: funnel
+    };
+  }
+
+  // Desk Bell / Glockenspiel Bar (卓上ベル・鉄琴プレート)
+  public static createBell(data: GadgetData): GadgetBodyBundle {
+    const w = data.options?.width || 48;
+    const h = data.options?.height || 36;
+
+    // Metallic dome/bar body
+    const bell = Bodies.rectangle(data.x, data.y, w, h, {
+      isStatic: true,
+      restitution: 0.75, // crisp ping rebound
+      friction: 0.1,
+      angle: data.angle,
+      label: 'bell'
+    });
+    bell.plugin = { gadgetId: data.id, gadget: data };
+
+    return {
+      gadgetId: data.id,
+      type: 'bell',
+      bodies: [bell],
+      constraints: [],
+      mainBody: bell
+    };
+  }
+
+  // Paddle Wheel (回転パドル水車)
+  public static createPaddleWheel(data: GadgetData): GadgetBodyBundle {
+    const spokeCount = data.options?.spokes || 4;
+    const diameter = 96;
+    const thickness = 12;
+
+    const parts: Matter.Body[] = [];
+    // Hub
+    const hub = Bodies.circle(data.x, data.y, 15, {
+      label: 'paddle_part'
+    });
+    parts.push(hub);
+
+    // Spokes / Paddles
+    if (spokeCount === 6) {
+      for (let i = 0; i < 3; i++) {
+        const ang = (i * Math.PI) / 3;
+        const bar = Bodies.rectangle(data.x, data.y, diameter, thickness, {
+          angle: ang,
+          label: 'paddle_part'
+        });
+        parts.push(bar);
+      }
+    } else {
+      // 4 Spokes: Cross
+      const hBar = Bodies.rectangle(data.x, data.y, diameter, thickness, {
+        label: 'paddle_part'
+      });
+      const vBar = Bodies.rectangle(data.x, data.y, thickness, diameter, {
+        label: 'paddle_part'
+      });
+      parts.push(hBar, vBar);
+    }
+
+    const wheel = Body.create({
+      parts,
+      friction: 0.05,
+      frictionStatic: 0.1,
+      restitution: 0.35,
+      density: 0.0022,
+      label: 'paddle_wheel'
+    });
+    Body.setAngle(wheel, data.angle);
+
+    const joint = Constraint.create({
+      pointA: { x: data.x, y: data.y },
+      bodyB: wheel,
+      pointB: { x: 0, y: 0 },
+      length: 0,
+      stiffness: 1.0,
+      damping: 0.003
+    });
+
+    wheel.plugin = { gadgetId: data.id, gadget: data };
+    parts.forEach(p => (p.plugin = wheel.plugin));
+
+    return {
+      gadgetId: data.id,
+      type: 'paddle_wheel',
+      bodies: [wheel],
+      constraints: [joint],
+      mainBody: wheel
+    };
+  }
+
+  // Pulley & Bucket Elevator (滑車バケツ・エレベーター)
+  public static createPulley(data: GadgetData): GadgetBodyBundle {
+    const span = data.options?.span || 140;
+    const halfSpan = span / 2;
+    const hangLength = 85;
+
+    // Top fixed pulley wheel anchor
+    const pulleyAnchor = Bodies.circle(data.x, data.y, 16, {
+      isStatic: true,
+      label: 'pulley_wheel'
+    });
+
+    // Left Bucket (U-shaped cup)
+    const bW = 46;
+    const bH = 34;
+    const th = 6;
+
+    const leftBottom = Bodies.rectangle(data.x - halfSpan, data.y + hangLength + bH / 2 - th / 2, bW, th, { label: 'pulley_bucket_left' });
+    const leftW1 = Bodies.rectangle(data.x - halfSpan - bW / 2 + th / 2, data.y + hangLength, th, bH, { label: 'pulley_bucket_left' });
+    const leftW2 = Bodies.rectangle(data.x - halfSpan + bW / 2 - th / 2, data.y + hangLength, th, bH, { label: 'pulley_bucket_left' });
+
+    const bucketLeft = Body.create({
+      parts: [leftBottom, leftW1, leftW2],
+      friction: 0.2,
+      density: 0.0018,
+      label: 'pulley_bucket_left'
+    });
+
+    // Right Bucket (starts slightly higher or same height)
+    const rightBottom = Bodies.rectangle(data.x + halfSpan, data.y + hangLength + bH / 2 - th / 2, bW, th, { label: 'pulley_bucket_right' });
+    const rightW1 = Bodies.rectangle(data.x + halfSpan - bW / 2 + th / 2, data.y + hangLength, th, bH, { label: 'pulley_bucket_right' });
+    const rightW2 = Bodies.rectangle(data.x + halfSpan + bW / 2 - th / 2, data.y + hangLength, th, bH, { label: 'pulley_bucket_right' });
+
+    const bucketRight = Body.create({
+      parts: [rightBottom, rightW1, rightW2],
+      friction: 0.2,
+      density: 0.0018,
+      label: 'pulley_bucket_right'
+    });
+
+    pulleyAnchor.plugin = {
+      gadgetId: data.id,
+      gadget: data,
+      bucketLeft,
+      bucketRight,
+      hangLength,
+      hangOffset: 0,
+      hangVelocity: 0,
+      initialY: data.y + hangLength,
+      span,
+      totalLength: hangLength * 2
+    };
+    bucketLeft.plugin = pulleyAnchor.plugin;
+    bucketRight.plugin = pulleyAnchor.plugin;
+
+    return {
+      gadgetId: data.id,
+      type: 'pulley',
+      bodies: [pulleyAnchor, bucketLeft, bucketRight],
+      constraints: [],
+      mainBody: pulleyAnchor
+    };
+  }
+
+  // Spoon Lever Catapult (てこカタパルト・跳ね上げスプーン)
+  public static createCatapult(data: GadgetData): GadgetBodyBundle {
+    // Fulcrum base
+    const fulcrum = Bodies.polygon(data.x, data.y + 18, 3, 16, {
+      isStatic: true,
+      label: 'catapult_fulcrum'
+    });
+
+    // Lever arm: Pivot at (0, 0)
+    // Left anvil side: -50px, Right spoon side: +85px
+    const armBar = Bodies.rectangle(data.x + 18, data.y, 160, 10, {
+      friction: 0.2,
+      label: 'catapult_part'
+    });
+    // Heavy wooden anvil pad on the short left side
+    const anvilPad = Bodies.rectangle(data.x - 52, data.y - 8, 36, 16, {
+      friction: 0.6,
+      density: 0.006, // heavy solid block
+      label: 'catapult_part'
+    });
+    // Cupped spoon on the long right side
+    const spoonBottom = Bodies.rectangle(data.x + 90, data.y - 4, 30, 6, { label: 'catapult_part' });
+    const spoonLip = Bodies.rectangle(data.x + 104, data.y - 10, 6, 16, { label: 'catapult_part' });
+
+    const catapult = Body.create({
+      parts: [armBar, anvilPad, spoonBottom, spoonLip],
+      friction: 0.2,
+      frictionStatic: 0.4,
+      restitution: 0.12,
+      density: 0.0025,
+      label: 'catapult_arm'
+    });
+    Body.setAngle(catapult, data.angle);
+
+    const joint = Constraint.create({
+      pointA: { x: data.x, y: data.y },
+      bodyB: catapult,
+      pointB: { x: 0, y: 0 },
+      length: 0,
+      stiffness: 0.98,
+      damping: 0.015
+    });
+
+    fulcrum.plugin = { gadgetId: data.id, gadget: data };
+    catapult.plugin = fulcrum.plugin;
+
+    return {
+      gadgetId: data.id,
+      type: 'catapult',
+      bodies: [catapult, fulcrum],
+      constraints: [joint],
+      mainBody: catapult
     };
   }
 
@@ -467,10 +718,60 @@ export class GadgetFactory {
         return this.createFan(data);
       case 'magnet':
         return this.createMagnet(data);
-      case 'water':
-        return this.createWater(data);
+      case 'funnel':
+        return this.createFunnel(data);
+      case 'bell':
+        return this.createBell(data);
+      case 'paddle_wheel':
+        return this.createPaddleWheel(data);
+      case 'pulley':
+        return this.createPulley(data);
+      case 'catapult':
+        return this.createCatapult(data);
+      case 'faucet':
+        return this.createFaucet(data);
       default:
         return this.createPlank(data);
     }
   }
+
+  // Faucet (蛇口 - 水流・水滴の供給口)
+  public static createFaucet(data: GadgetData): GadgetBodyBundle {
+    const pipePart = Bodies.rectangle(data.x - 6, data.y, 40, 16, {
+      label: 'faucet_pipe'
+    });
+    const spoutPart = Bodies.rectangle(data.x + 14, data.y + 12, 14, 18, {
+      label: 'faucet_spout'
+    });
+    const handlePart = Bodies.circle(data.x - 2, data.y - 14, 12, {
+      label: 'faucet_handle'
+    });
+
+    const faucet = Body.create({
+      parts: [pipePart, spoutPart, handlePart],
+      isStatic: true,
+      label: 'faucet'
+    });
+    Body.setAngle(faucet, data.angle);
+
+    faucet.plugin = {
+      gadgetId: data.id,
+      gadget: data,
+      isOpen: data.options?.autoFlow ?? true,
+      flowRate: data.options?.flowRate ?? 1.0,
+      dropCooldown: 0
+    };
+    pipePart.plugin = faucet.plugin;
+    spoutPart.plugin = faucet.plugin;
+    handlePart.plugin = faucet.plugin;
+
+    return {
+      gadgetId: data.id,
+      type: 'faucet',
+      bodies: [faucet],
+      constraints: [],
+      mainBody: faucet
+    };
+  }
 }
+

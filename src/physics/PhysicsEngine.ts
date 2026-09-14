@@ -22,6 +22,7 @@ export class PhysicsEngine {
   // Environment Floor (画面下部の床)
   public floorY: number = 720;
   public floorBody: Matter.Body | null = null;
+  public waterDrops: { body: Matter.Body; birthTime: number }[] = [];
 
   constructor() {
     this.engine = Engine.create({
@@ -63,12 +64,6 @@ export class PhysicsEngine {
           continue;
         }
 
-        // Water splash check
-        if (labelA === 'water' || labelB === 'water') {
-          soundEngine.playWaterSplash(speed);
-          continue;
-        }
-
         // Ignore very small impacts to avoid sound spamming
         if (speed < 0.6) continue;
 
@@ -96,13 +91,66 @@ export class PhysicsEngine {
           continue;
         }
 
+        // Bell chime
+        if (labelA === 'bell' || labelB === 'bell') {
+          const bellBody = labelA === 'bell' ? bodyA : bodyB;
+          const note = bellBody.plugin?.gadget?.options?.note || 'C5';
+          soundEngine.playDeskBell(note, speed);
+          if (bellBody.plugin) {
+            bellBody.plugin.lastHitTime = Date.now();
+          }
+          continue;
+        }
+
+        // Catapult fling
+        if (
+          labelA === 'catapult_arm' || labelB === 'catapult_arm' ||
+          labelA === 'catapult_part' || labelB === 'catapult_part'
+        ) {
+          soundEngine.playCatapultLaunch(speed);
+        }
+
+        // Paddle wheel click
+        if (
+          labelA === 'paddle_wheel' || labelB === 'paddle_wheel' ||
+          labelA === 'paddle_part' || labelB === 'paddle_part'
+        ) {
+          soundEngine.playPaddleWheelClick(speed);
+        }
+
+        // Faucet handle hit -> toggle flow on
+        if (
+          (labelA === 'faucet_handle' || labelB === 'faucet_handle' || labelA === 'faucet' || labelB === 'faucet') &&
+          (labelA.includes('marble') || labelB.includes('marble') || labelA === 'domino' || labelB === 'domino')
+        ) {
+          const faucetBody = labelA.includes('faucet') ? bodyA : bodyB;
+          if (faucetBody.plugin && !faucetBody.plugin.isOpen) {
+            faucetBody.plugin.isOpen = true;
+            soundEngine.playMetalSnap(5);
+          }
+        }
+
+        // Water drop impacts (pushes paddle wheel, makes delicate water drops)
+        if (labelA === 'water_drop' || labelB === 'water_drop') {
+          const drop = labelA === 'water_drop' ? bodyA : bodyB;
+          const other = labelA === 'water_drop' ? bodyB : bodyA;
+
+          // Droplet hitting paddle wheel -> extra push to spin wheel + water sound!
+          if (other.label === 'paddle_part' || other.label === 'paddle_wheel') {
+            Body.applyForce(other, drop.position, { x: 0, y: 0.0006 });
+            soundEngine.playWaterDrip(0.18);
+          }
+          continue;
+        }
+
         // Wood / Plank / Book / Floor impacts
         if (
           labelA.includes('marble') || labelB.includes('marble') ||
           labelA === 'domino' || labelB === 'domino' ||
           labelA === 'book' || labelB === 'book' ||
           labelA === 'plank' || labelB === 'plank' ||
-          labelA === 'floor' || labelB === 'floor'
+          labelA === 'floor' || labelB === 'floor' ||
+          labelA === 'funnel_wall' || labelB === 'funnel_wall'
         ) {
           soundEngine.playWoodImpact(speed);
         }
@@ -159,6 +207,7 @@ export class PhysicsEngine {
 
     this.bundles.clear();
     this.playerMarbleBody = null;
+    this.waterDrops = [];
 
     soundEngine.updateRollingSound(0, false);
     soundEngine.setFanActive(false);
@@ -307,12 +356,10 @@ export class PhysicsEngine {
     const allBodies = Composite.allBodies(this.engine.world);
     const fans: Matter.Body[] = [];
     const magnets: Matter.Body[] = [];
-    const waters: Matter.Body[] = [];
 
     for (const b of allBodies) {
       if (b.label === 'fan') fans.push(b);
       if (b.label === 'magnet') magnets.push(b);
-      if (b.label === 'water') waters.push(b);
     }
 
     // Dynamic bodies that react to forces
@@ -340,8 +387,12 @@ export class PhysicsEngine {
             const lateralFalloff = 1 - Math.pow(perpDist / coneWidth, 2);
             const forceMagnitude = 0.0024 * power * axialFalloff * lateralFalloff;
 
-            // Apply aerodynamic force
-            Body.applyForce(body, body.position, {
+            // Apply aerodynamic force (with torque offset for paddle wheel)
+            const forcePos = (body.label === 'paddle_wheel' || body.label === 'paddle_part')
+              ? { x: body.position.x - dir.y * 30, y: body.position.y + dir.x * 30 }
+              : body.position;
+
+            Body.applyForce(body, forcePos, {
               x: dir.x * forceMagnitude,
               y: dir.y * forceMagnitude
             });
@@ -375,36 +426,7 @@ export class PhysicsEngine {
       }
     }
 
-    // 3. Water Buoyancy & Gradual Fluid Drag
-    for (const water of waters) {
-      const wBounds = water.bounds;
-      for (const body of dynamicBodies) {
-        const bPos = body.position;
-        if (
-          bPos.x >= wBounds.min.x && bPos.x <= wBounds.max.x &&
-          bPos.y >= wBounds.min.y && bPos.y <= wBounds.max.y
-        ) {
-          // Submersion depth ratio (gradual entry so objects don't snap upward)
-          const depth = Math.max(0.2, Math.min(1.0, (bPos.y - wBounds.min.y) / 45));
-          const buoyancy = -0.00138 * body.mass * depth;
-          Body.applyForce(body, body.position, { x: 0, y: buoyancy });
-
-          // Viscous fluid drag (linear + velocity-dependent resistance)
-          const vx = body.velocity.x;
-          const vy = body.velocity.y;
-          const speed = Math.hypot(vx, vy);
-          const drag = Math.max(0.82, 0.94 - speed * 0.005);
-
-          Body.setVelocity(body, {
-            x: vx * drag,
-            y: vy * drag
-          });
-          Body.setAngularVelocity(body, body.angularVelocity * 0.88);
-        }
-      }
-    }
-
-    // 4. Seesaw tilt limiting & natural travel angle
+    // 3. Seesaw tilt limiting & natural travel angle
     for (const body of dynamicBodies) {
       if (body.label === 'seesaw_plank') {
         const initialAngle = body.plugin?.gadget?.angle ?? 0;
@@ -421,6 +443,207 @@ export class PhysicsEngine {
         Body.setAngularVelocity(body, body.angularVelocity * 0.985);
       }
     }
+
+    // 5. Funnel Swirl Physics (すり鉢ロートの渦巻き減速)
+    const funnelSensors = allBodies.filter(b => b.label === 'funnel_vortex');
+    for (const f of funnelSensors) {
+      for (const body of dynamicBodies) {
+        if (!body.label.includes('marble')) continue;
+        const dx = body.position.x - f.position.x;
+        const dy = body.position.y - f.position.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < 46) {
+          // If close to center bottom spout, let it drop naturally
+          if (Math.abs(dx) < 14 && dy > 14) {
+            continue;
+          }
+
+          const angle = Math.atan2(dy, dx);
+          // Swirl direction based on incoming horizontal velocity (or clockwise default)
+          const swirlSign = body.velocity.x >= 0 ? 1 : -1;
+          const tangent = { x: -Math.sin(angle) * swirlSign, y: Math.cos(angle) * swirlSign };
+          const inward = { x: -dx / (dist + 0.01), y: -dy / (dist + 0.01) };
+
+          // Orbital guide force + slight upward buoyancy to counter gravity for 1-2 smooth swirls
+          Body.applyForce(body, body.position, {
+            x: tangent.x * 0.00035 + inward.x * 0.00025,
+            y: -0.00065
+          });
+
+          // Viscous drag for spiral decay
+          Body.setVelocity(body, {
+            x: body.velocity.x * 0.985,
+            y: body.velocity.y * 0.985
+          });
+
+          // Play swirling sound throttled
+          const now = Date.now();
+          if (!f.plugin.lastSwirlSound || now - f.plugin.lastSwirlSound > 320) {
+            f.plugin.lastSwirlSound = now;
+            soundEngine.playFunnelSwirl(Math.hypot(body.velocity.x, body.velocity.y));
+          }
+        }
+      }
+    }
+
+    // 6. Pulley Coupled Motion (滑車バケツの連動昇降・静止時ゼロドリフト)
+    const pulleys = Array.from(this.bundles.values()).filter(b => b.type === 'pulley');
+    for (const p of pulleys) {
+      const anchor = p.mainBody;
+      const { bucketLeft, bucketRight, span = 140, hangLength = 85 } = anchor.plugin || {};
+      if (!bucketLeft || !bucketRight) continue;
+
+      // 1. Counteract global gravity on both buckets so they never creep down when idle
+      Body.applyForce(bucketLeft, bucketLeft.position, { x: 0, y: -bucketLeft.mass * 0.001 });
+      Body.applyForce(bucketRight, bucketRight.position, { x: 0, y: -bucketRight.mass * 0.001 });
+
+      // 2. Measure additional payload resting inside each bucket
+      let extraMassLeft = 0;
+      let extraMassRight = 0;
+      const bLeftBounds = bucketLeft.bounds;
+      const bRightBounds = bucketRight.bounds;
+
+      for (const b of dynamicBodies) {
+        if (b === bucketLeft || b === bucketRight) continue;
+        const pos = b.position;
+        if (pos.x >= bLeftBounds.min.x - 4 && pos.x <= bLeftBounds.max.x + 4 &&
+            pos.y >= bLeftBounds.min.y - 14 && pos.y <= bLeftBounds.max.y + 8) {
+          extraMassLeft += b.mass * 3.5;
+        }
+        if (pos.x >= bRightBounds.min.x - 4 && pos.x <= bRightBounds.max.x + 4 &&
+            pos.y >= bRightBounds.min.y - 14 && pos.y <= bRightBounds.max.y + 8) {
+          extraMassRight += b.mass * 3.5;
+        }
+      }
+
+      // 3. Static friction threshold: if no significant difference, remain 100% still
+      let massDiff = extraMassLeft - extraMassRight;
+      if (Math.abs(massDiff) < 0.0006) {
+        massDiff = 0;
+      }
+
+      const targetVel = Math.max(-3.5, Math.min(3.5, massDiff * 500));
+      anchor.plugin.hangVelocity = (anchor.plugin.hangVelocity || 0) * 0.88 + targetVel * 0.12;
+      if (Math.abs(anchor.plugin.hangVelocity) < 0.01) {
+        anchor.plugin.hangVelocity = 0;
+      }
+
+      const maxTravel = 65; // max vertical travel
+      anchor.plugin.hangOffset = (anchor.plugin.hangOffset || 0) + anchor.plugin.hangVelocity;
+      if (anchor.plugin.hangOffset > maxTravel) {
+        anchor.plugin.hangOffset = maxTravel;
+        anchor.plugin.hangVelocity = 0;
+      }
+      if (anchor.plugin.hangOffset < -maxTravel) {
+        anchor.plugin.hangOffset = -maxTravel;
+        anchor.plugin.hangVelocity = 0;
+      }
+
+      // 4. Exact coupled opposite positions (rope length is 100% conserved)
+      const initialY = anchor.position.y + hangLength;
+      const curOffset = anchor.plugin.hangOffset || 0;
+      const curVy = anchor.plugin.hangVelocity || 0;
+
+      Body.setPosition(bucketLeft, { x: anchor.position.x - span / 2, y: initialY + curOffset });
+      Body.setPosition(bucketRight, { x: anchor.position.x + span / 2, y: initialY - curOffset });
+      Body.setVelocity(bucketLeft, { x: 0, y: curVy });
+      Body.setVelocity(bucketRight, { x: 0, y: -curVy });
+      Body.setAngle(bucketLeft, 0);
+      Body.setAngle(bucketRight, 0);
+      Body.setAngularVelocity(bucketLeft, 0);
+      Body.setAngularVelocity(bucketRight, 0);
+
+      if (Math.abs(curVy) > 0.35) {
+        const now = Date.now();
+        if (!anchor.plugin.lastCreak || now - anchor.plugin.lastCreak > 400) {
+          anchor.plugin.lastCreak = now;
+          soundEngine.playPulleyCreak(Math.abs(curVy));
+        }
+      }
+    }
+
+    // 7. Catapult Tilt Limiting (てこカタパルトの可動域制限)
+    for (const body of dynamicBodies) {
+      if (body.label === 'catapult_arm') {
+        const initialAngle = body.plugin?.gadget?.angle ?? 0;
+        const relAngle = body.angle - initialAngle;
+        // Resting limit ~ 0.08 rad (horizontal), max swing ~ -0.48 rad (anvil slammed down, spoon high)
+        if (relAngle > 0.08) {
+          Body.setAngle(body, initialAngle + 0.08);
+          Body.setAngularVelocity(body, -Math.abs(body.angularVelocity) * 0.15);
+        } else if (relAngle < -0.48) {
+          Body.setAngle(body, initialAngle - 0.48);
+          Body.setAngularVelocity(body, Math.abs(body.angularVelocity) * 0.15);
+        }
+        Body.setAngularVelocity(body, body.angularVelocity * 0.985);
+      }
+    }
+
+    // 8. Faucet Water Stream Generation (蛇口からの水滴射出)
+    const faucets = Array.from(this.bundles.values()).filter(b => b.type === 'faucet');
+    for (const f of faucets) {
+      const anchor = f.mainBody;
+      if (!anchor.plugin?.isOpen) continue;
+
+      anchor.plugin.dropCooldown = (anchor.plugin.dropCooldown || 0) + 1;
+      const flowRate = anchor.plugin.flowRate || anchor.plugin.gadget?.options?.flowRate || 1.0;
+      const interval = Math.max(3, Math.round(7 / flowRate));
+
+      if (anchor.plugin.dropCooldown >= interval) {
+        anchor.plugin.dropCooldown = 0;
+
+        const cos = Math.cos(anchor.angle);
+        const sin = Math.sin(anchor.angle);
+        // Spout position
+        const spoutX = anchor.position.x + cos * 14 - sin * 18;
+        const spoutY = anchor.position.y + sin * 14 + cos * 18;
+
+        const r = 4.5 + (Math.random() - 0.5) * 1.5;
+        const drop = Matter.Bodies.circle(spoutX + (Math.random() - 0.5) * 4, spoutY, r, {
+          restitution: 0.12,
+          friction: 0.01,
+          frictionAir: 0.001,
+          density: 0.0035, // dense enough to apply solid torque on paddle wheel
+          label: 'water_drop'
+        });
+        drop.plugin = { birthTime: Date.now() };
+
+        Matter.Body.setVelocity(drop, {
+          x: -sin * 1.5 + (Math.random() - 0.5) * 0.4,
+          y: cos * 1.5 + 1.2
+        });
+
+        Composite.add(this.engine.world, drop);
+        this.waterDrops.push({ body: drop, birthTime: Date.now() });
+
+        // Play drip sound throttled
+        const now = Date.now();
+        if (!anchor.plugin.lastDripSound || now - anchor.plugin.lastDripSound > 220) {
+          anchor.plugin.lastDripSound = now;
+          soundEngine.playWaterDrip(0.2);
+        }
+      }
+    }
+
+    // Clean up expired or fallen water drops
+    const nowTime = Date.now();
+    const activeDrops: { body: Matter.Body; birthTime: number }[] = [];
+    for (const d of this.waterDrops) {
+      const age = nowTime - d.birthTime;
+      const isDead = age > 5000 || d.body.position.y > this.floorY + 30 || d.body.position.y < -200;
+      if (isDead) {
+        Composite.remove(this.engine.world, d.body);
+      } else {
+        activeDrops.push(d);
+      }
+    }
+    // Cap max drops to prevent lag
+    while (activeDrops.length > 60) {
+      const oldest = activeDrops.shift();
+      if (oldest) Composite.remove(this.engine.world, oldest.body);
+    }
+    this.waterDrops = activeDrops;
   }
 
   private updateAudioFeedback() {

@@ -13,7 +13,12 @@ export type GadgetType =
   | 'pendulum'
   | 'fan'
   | 'magnet'
-  | 'water';
+  | 'funnel'
+  | 'bell'
+  | 'paddle_wheel'
+  | 'pulley'
+  | 'catapult'
+  | 'faucet';
 
 export interface GadgetOptions {
   width?: number;
@@ -29,6 +34,11 @@ export interface GadgetOptions {
   isPlayerBall?: boolean;
   length?: number; // for pendulum or rubber band
   polarity?: 'attract' | 'repel'; // for magnet
+  note?: 'C5' | 'D5' | 'E5' | 'F5' | 'G5' | 'A5' | 'B5' | 'C6'; // for bell pitch
+  spokes?: number; // for paddle wheel
+  span?: number; // for pulley rope span
+  flowRate?: number; // for faucet water stream rate
+  autoFlow?: boolean; // for faucet start immediately vs triggered
 }
 
 export interface GadgetData {
