@@ -25,6 +25,10 @@ export class GadgetFactory {
       friction: data.options?.friction ?? 0.02,
       frictionAir: 0.0008,
       density: 0.004, // nice solid marble weight
+      collisionFilter: {
+        category: 0x0002,
+        mask: 0xFFFFFFFF ^ 0x0004
+      },
       label: isPlayer ? 'player_marble' : 'marble',
       render: { fillStyle: color }
     });
@@ -89,10 +93,10 @@ export class GadgetFactory {
     const plank = Bodies.rectangle(data.x, data.y, w, h, {
       isStatic,
       friction: data.options?.friction ?? 0.04,
-      restitution: data.options?.restitution ?? 0.22,
       angle: data.angle,
       label: 'plank'
     });
+    plank.restitution = data.options?.restitution ?? 0.22;
     plank.plugin = { gadgetId: data.id, gadget: data };
 
     return {
@@ -164,11 +168,11 @@ export class GadgetFactory {
     // High energy pinball-style bouncer
     const springPad = Bodies.rectangle(data.x, data.y, w, h, {
       isStatic: true,
-      restitution: data.options?.restitution ?? 1.65, // Dynamic crisp boing bounce
       friction: 0.01,
       angle: data.angle,
       label: 'spring'
     });
+    springPad.restitution = data.options?.restitution ?? 1.65; // Dynamic crisp boing bounce
     springPad.plugin = { gadgetId: data.id, gadget: data };
 
     return {
@@ -190,7 +194,7 @@ export class GadgetFactory {
       friction: 0.15,
       frictionStatic: 0.3,
       restitution: 0.08,
-      density: 0.0018,
+      density: 0.005,
       angle: data.angle,
       label: 'seesaw_plank'
     });
@@ -198,6 +202,7 @@ export class GadgetFactory {
     // Fulcrum (pivot pin)
     const pivot = Bodies.polygon(data.x, data.y + 18, 3, 16, {
       isStatic: true,
+      isSensor: true,
       label: 'seesaw_pivot'
     });
 
@@ -319,11 +324,11 @@ export class GadgetFactory {
     // Snappy elastic band
     const band = Bodies.rectangle(data.x, data.y, w, h, {
       isStatic: true,
-      restitution: 1.35, // High bouncy elasticity
       friction: 0.05,
       angle: data.angle,
       label: 'rubber_band'
     });
+    band.restitution = data.options?.restitution ?? 1.35; // High bouncy elasticity
     band.plugin = { gadgetId: data.id, gadget: data };
 
     return {
@@ -420,13 +425,13 @@ export class GadgetFactory {
     const w = data.options?.width || 130;
     const h = data.options?.height || 75;
     const thickness = 8;
-    const holeWidth = 34;
+    const holeWidth = 44;
 
     // Left sloped guide
     const leftSlope = Bodies.rectangle(
       data.x - w / 4 - holeWidth / 4,
       data.y - h / 4,
-      w * 0.52,
+      w * 0.46,
       thickness,
       {
         angle: 0.58,
@@ -441,7 +446,7 @@ export class GadgetFactory {
     const rightSlope = Bodies.rectangle(
       data.x + w / 4 + holeWidth / 4,
       data.y - h / 4,
-      w * 0.52,
+      w * 0.46,
       thickness,
       {
         angle: -0.58,
@@ -484,9 +489,10 @@ export class GadgetFactory {
     const w = data.options?.width || 48;
     const h = data.options?.height || 36;
 
-    // Metallic dome/bar body
+    // Metallic dome/bar body (sensor so marbles chime smoothly without getting blocked)
     const bell = Bodies.rectangle(data.x, data.y, w, h, {
       isStatic: true,
+      isSensor: true,
       restitution: 0.75, // crisp ping rebound
       friction: 0.1,
       angle: data.angle,
@@ -637,6 +643,7 @@ export class GadgetFactory {
     // Fulcrum base
     const fulcrum = Bodies.polygon(data.x, data.y + 18, 3, 16, {
       isStatic: true,
+      isSensor: true,
       label: 'catapult_fulcrum'
     });
 
@@ -664,12 +671,15 @@ export class GadgetFactory {
       density: 0.0025,
       label: 'catapult_arm'
     });
-    Body.setAngle(catapult, data.angle);
+    const localPivot = { x: data.x - catapult.position.x, y: data.y - catapult.position.y };
+    if (data.angle) {
+      (Body as any).rotate(catapult, data.angle, { x: data.x, y: data.y });
+    }
 
     const joint = Constraint.create({
       pointA: { x: data.x, y: data.y },
       bodyB: catapult,
-      pointB: { x: 0, y: 0 },
+      pointB: localPivot,
       length: 0,
       stiffness: 0.98,
       damping: 0.015

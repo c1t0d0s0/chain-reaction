@@ -37,50 +37,50 @@ export const DEFAULT_COURSES: CourseData[] = [
         id: 'plank-2',
         type: 'plank',
         x: 280,
-        y: 275,
-        angle: 0.30,
+        y: 265,
+        angle: 0.32,
         options: { width: 200, height: 16 }
       },
       // Flat Shelf for Dominoes
       {
         id: 'plank-3',
         type: 'plank',
-        x: 490,
-        y: 350,
+        x: 425,
+        y: 345,
         angle: 0.02,
-        options: { width: 300, height: 16 }
+        options: { width: 200, height: 16 }
       },
       // Domino Chain (6 pieces spaced at 26px)
-      { id: 'dom-1', type: 'domino', x: 380, y: 315, angle: 0 },
-      { id: 'dom-2', type: 'domino', x: 406, y: 315, angle: 0 },
-      { id: 'dom-3', type: 'domino', x: 432, y: 315, angle: 0 },
-      { id: 'dom-4', type: 'domino', x: 458, y: 315, angle: 0 },
-      { id: 'dom-5', type: 'domino', x: 484, y: 315, angle: 0 },
-      { id: 'dom-6', type: 'domino', x: 510, y: 315, angle: 0 },
+      { id: 'dom-1', type: 'domino', x: 360, y: 310, angle: 0 },
+      { id: 'dom-2', type: 'domino', x: 386, y: 310, angle: 0 },
+      { id: 'dom-3', type: 'domino', x: 412, y: 310, angle: 0 },
+      { id: 'dom-4', type: 'domino', x: 438, y: 310, angle: 0 },
+      { id: 'dom-5', type: 'domino', x: 464, y: 310, angle: 0 },
+      { id: 'dom-6', type: 'domino', x: 490, y: 310, angle: 0 },
       // Upright Book
       {
         id: 'book-1',
         type: 'book',
-        x: 540,
-        y: 298,
+        x: 520,
+        y: 300,
         angle: 0,
-        options: { width: 28, height: 85 }
+        options: { width: 14, height: 65 }
       },
       // Seesaw below the book
       {
         id: 'seesaw-1',
         type: 'seesaw',
-        x: 650,
+        x: 560,
         y: 410,
-        angle: -0.15,
+        angle: 0,
         options: { width: 220 }
       },
       // Second marble on seesaw triggered by the book
       {
         id: 'marble-seesaw',
         type: 'marble',
-        x: 710,
-        y: 385,
+        x: 620,
+        y: 390,
         angle: 0,
         options: { isPlayerBall: true, color: '#ef4444', radius: 14 }
       },
@@ -88,8 +88,8 @@ export const DEFAULT_COURSES: CourseData[] = [
       {
         id: 'plank-4',
         type: 'plank',
-        x: 820,
-        y: 490,
+        x: 740,
+        y: 465,
         angle: 0.25,
         options: { width: 180, height: 16 }
       },
@@ -97,8 +97,8 @@ export const DEFAULT_COURSES: CourseData[] = [
       {
         id: 'goal-1',
         type: 'goal',
-        x: 920,
-        y: 520,
+        x: 840,
+        y: 495,
         angle: 0
       }
     ]
@@ -138,8 +138,8 @@ export const DEFAULT_COURSES: CourseData[] = [
       {
         id: 'spring-1',
         type: 'spring',
-        x: 280,
-        y: 320,
+        x: 295,
+        y: 315,
         angle: -0.45, // angled bounce up-right
         options: { width: 70, height: 26, restitution: 1.6 }
       },
@@ -147,17 +147,17 @@ export const DEFAULT_COURSES: CourseData[] = [
       {
         id: 'tube-1',
         type: 'toilet_paper_tube',
-        x: 480,
-        y: 220,
-        angle: 0.42,
-        options: { width: 170, height: 48 }
+        x: 460,
+        y: 210,
+        angle: 0.50,
+        options: { width: 150, height: 56 }
       },
       // Intermediate ramp
       {
         id: 'plank-jump-2',
         type: 'plank',
         x: 640,
-        y: 330,
+        y: 340,
         angle: 0.28,
         options: { width: 190, height: 16 }
       },
@@ -165,9 +165,9 @@ export const DEFAULT_COURSES: CourseData[] = [
       {
         id: 'rubber-1',
         type: 'rubber_band',
-        x: 770,
+        x: 780,
         y: 380,
-        angle: -0.3,
+        angle: -0.35,
         options: { width: 110 }
       },
       // Goal
@@ -175,7 +175,7 @@ export const DEFAULT_COURSES: CourseData[] = [
         id: 'goal-2',
         type: 'goal',
         x: 880,
-        y: 430,
+        y: 420,
         angle: 0
       }
     ]
@@ -183,7 +183,7 @@ export const DEFAULT_COURSES: CourseData[] = [
   {
     id: 'course-3',
     title: '3. 風と水と磁石のからくり大実験',
-    description: '水槽をポチャリと通過し、扇風機の突風で飛ばされ、磁石の力で引き寄せられてゴールするダイナミックなコースです。',
+    description: '蛇口から注がれる涼しげな水滴のシャワーを浴びて水車を回し、扇風機の突風で飛ばされ、磁石の力で引き寄せられてゴールするダイナミックなコースです。',
     gadgets: [
       // Start Gate
       {
@@ -211,14 +211,32 @@ export const DEFAULT_COURSES: CourseData[] = [
         angle: 0.45,
         options: { width: 200, height: 16 }
       },
-      // Transition Plank
+      // Faucet pouring water drops onto paddle wheel
       {
-        id: 'plank-w-bottom',
+        id: 'faucet-3',
+        type: 'faucet',
+        x: 280,
+        y: 70,
+        angle: 0,
+        options: { autoFlow: true, flowRate: 1.2 }
+      },
+      // Paddle Wheel turned by water drops
+      {
+        id: 'wheel-3',
+        type: 'paddle_wheel',
+        x: 310,
+        y: 145,
+        angle: 0.2,
+        options: { spokes: 4 }
+      },
+      // Water slide ramp under paddle wheel leading to fan
+      {
+        id: 'plank-w2',
         type: 'plank',
         x: 320,
-        y: 305,
-        angle: 0.1,
-        options: { width: 180, height: 14 }
+        y: 280,
+        angle: 0.25,
+        options: { width: 170, height: 16 }
       },
       // Electric Fan blowing to the right
       {
@@ -226,7 +244,8 @@ export const DEFAULT_COURSES: CourseData[] = [
         type: 'fan',
         x: 430,
         y: 340,
-        angle: -0.15 // slightly tilted up-right
+        angle: -0.1,
+        options: { power: 0.75 }
       },
       // Wind channel ramp
       {
@@ -250,17 +269,17 @@ export const DEFAULT_COURSES: CourseData[] = [
       {
         id: 'plank-mag',
         type: 'plank',
-        x: 720,
-        y: 370,
-        angle: 0.35,
+        x: 740,
+        y: 380,
+        angle: 0.25,
         options: { width: 180, height: 16 }
       },
       // Goal
       {
         id: 'goal-3',
         type: 'goal',
-        x: 850,
-        y: 430,
+        x: 830,
+        y: 325,
         angle: 0
       }
     ]
@@ -292,16 +311,16 @@ export const DEFAULT_COURSES: CourseData[] = [
         id: 'plank-4-1',
         type: 'plank',
         x: 180,
-        y: 150,
-        angle: 0.35,
-        options: { width: 180, height: 16 }
+        y: 160,
+        angle: 0.38,
+        options: { width: 190, height: 16 }
       },
       // Faucet pouring water onto paddle wheel
       {
         id: 'faucet-4-1',
         type: 'faucet',
         x: 260,
-        y: 110,
+        y: 70,
         angle: 0,
         options: { autoFlow: true, flowRate: 1.2 }
       },
@@ -309,26 +328,26 @@ export const DEFAULT_COURSES: CourseData[] = [
       {
         id: 'wheel-4-1',
         type: 'paddle_wheel',
-        x: 290,
-        y: 190,
+        x: 285,
+        y: 140,
         angle: 0.2,
         options: { spokes: 4 }
       },
-      // Guide plank under paddle wheel
+      // Guide plank under paddle wheel and bells leading into funnel
       {
         id: 'plank-4-2',
         type: 'plank',
-        x: 350,
-        y: 260,
-        angle: 0.32,
-        options: { width: 140, height: 16 }
+        x: 470,
+        y: 325,
+        angle: 0.28,
+        options: { width: 390, height: 16 }
       },
       // Musical Bell 1: ド (C5)
       {
         id: 'bell-c5',
         type: 'bell',
-        x: 410,
-        y: 285,
+        x: 415,
+        y: 295,
         angle: 0,
         options: { note: 'C5' }
       },
@@ -336,8 +355,8 @@ export const DEFAULT_COURSES: CourseData[] = [
       {
         id: 'bell-e5',
         type: 'bell',
-        x: 470,
-        y: 315,
+        x: 475,
+        y: 320,
         angle: 0,
         options: { note: 'E5' }
       },
@@ -345,36 +364,27 @@ export const DEFAULT_COURSES: CourseData[] = [
       {
         id: 'bell-g5',
         type: 'bell',
-        x: 530,
+        x: 535,
         y: 345,
         angle: 0,
         options: { note: 'G5' }
-      },
-      // Slope leading into Funnel
-      {
-        id: 'plank-4-3',
-        type: 'plank',
-        x: 590,
-        y: 375,
-        angle: 0.30,
-        options: { width: 120, height: 16 }
       },
       // Kitchen Funnel (すり鉢ロート)
       {
         id: 'funnel-4-1',
         type: 'funnel',
         x: 680,
-        y: 430,
+        y: 440,
         angle: 0,
         options: { width: 130, height: 75 }
       },
       // Catapult below funnel outlet
-      // Catapult pivot at (730, 560): left anvil pad is around x=678 (directly under funnel spout x=680!)
+      // Catapult pivot at (730, 570): left anvil pad is around x=678 (directly under funnel spout x=680)
       {
         id: 'catapult-4-1',
         type: 'catapult',
         x: 730,
-        y: 560,
+        y: 570,
         angle: 0
       },
       // Golden marble placed on the catapult spoon
@@ -382,7 +392,7 @@ export const DEFAULT_COURSES: CourseData[] = [
         id: 'marble-gold',
         type: 'marble',
         x: 820,
-        y: 535,
+        y: 545,
         angle: 0,
         options: { isPlayerBall: true, color: '#f59e0b', radius: 14 }
       },
@@ -390,17 +400,17 @@ export const DEFAULT_COURSES: CourseData[] = [
       {
         id: 'plank-4-4',
         type: 'plank',
-        x: 940,
-        y: 480,
-        angle: 0.22,
-        options: { width: 180, height: 16 }
+        x: 1000,
+        y: 500,
+        angle: 0.28,
+        options: { width: 240, height: 16 }
       },
       // High Bell: 高ド (C6) on the ramp
       {
         id: 'bell-c6',
         type: 'bell',
-        x: 980,
-        y: 450,
+        x: 1030,
+        y: 480,
         angle: 0,
         options: { note: 'C6' }
       },
@@ -408,8 +418,8 @@ export const DEFAULT_COURSES: CourseData[] = [
       {
         id: 'goal-4',
         type: 'goal',
-        x: 1060,
-        y: 510,
+        x: 1110,
+        y: 525,
         angle: 0
       }
     ]

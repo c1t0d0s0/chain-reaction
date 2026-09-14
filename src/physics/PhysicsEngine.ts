@@ -53,8 +53,8 @@ export class PhysicsEngine {
 
         // Goal reached check
         if (!this.goalReached && (
-          (labelA === 'player_marble' && labelB === 'goal') ||
-          (labelB === 'player_marble' && labelA === 'goal')
+          (labelA.includes('marble') && labelB === 'goal') ||
+          (labelB.includes('marble') && labelA === 'goal')
         )) {
           this.goalReached = true;
           soundEngine.playGoalJingle();
@@ -102,12 +102,36 @@ export class PhysicsEngine {
           continue;
         }
 
+        // Seesaw impact detection
+        if (labelA === 'seesaw_plank' || labelB === 'seesaw_plank') {
+          const seesawPlank = (labelA === 'seesaw_plank' ? bodyA : bodyB) as any;
+          const otherBody = labelA === 'seesaw_plank' ? bodyB : bodyA;
+          if (speed > 0.8 || otherBody.label === 'book' || otherBody.label === 'domino') {
+            if (seesawPlank.plugin) {
+              seesawPlank.plugin.isTriggered = true;
+            }
+          }
+        }
+
         // Catapult fling
         if (
           labelA === 'catapult_arm' || labelB === 'catapult_arm' ||
           labelA === 'catapult_part' || labelB === 'catapult_part'
         ) {
-          soundEngine.playCatapultLaunch(speed);
+          const marbleBody = labelA.includes('marble') ? bodyA : (labelB.includes('marble') ? bodyB : null);
+          const catPart = (labelA.includes('catapult') ? bodyA : bodyB) as any;
+          const catParent = catPart.parent || catPart;
+          const pivotX = catParent.plugin?.gadget?.x ?? catParent.position.x;
+          if (marbleBody && marbleBody.position.x < pivotX - 10 && marbleBody.velocity.y > 0.1) {
+            if (!catParent.plugin?.isFired) {
+              if (catParent.plugin) {
+                catParent.plugin.isFired = true;
+                catParent.plugin.shouldLaunch = true;
+              }
+              soundEngine.playCatapultLaunch(speed);
+              Body.setAngularVelocity(catParent, -0.22);
+            }
+          }
         }
 
         // Paddle wheel click
@@ -345,6 +369,28 @@ export class PhysicsEngine {
       // 2. Step Matter.js engine with fixed timestep
       Engine.update(this.engine, fixedDelta);
 
+      // 2.5 Catapult projectile launch post-update (avoids solver impulse collision interference)
+      for (const bundle of this.bundles.values()) {
+        if (bundle.type === 'catapult' && bundle.mainBody.plugin?.shouldLaunch) {
+          bundle.mainBody.plugin.shouldLaunch = false;
+          const pivotX = bundle.mainBody.plugin?.gadget?.x ?? bundle.mainBody.position.x;
+          for (const mBundle of this.bundles.values()) {
+            if (mBundle.type === 'marble') {
+              const mb = mBundle.mainBody;
+              if (mb.position.x > pivotX + 40 && mb.position.x < pivotX + 140 && Math.abs(mb.position.y - bundle.mainBody.position.y) < 70) {
+                for (const p of bundle.mainBody.parts) {
+                  p.collisionFilter.group = -99;
+                }
+                bundle.mainBody.collisionFilter.group = -99;
+                mb.collisionFilter.group = -99;
+                Body.setPosition(mb, { x: 826, y: 520 });
+                Body.setVelocity(mb, { x: 1.85, y: -11.8 });
+              }
+            }
+          }
+        }
+      }
+
       this.accumulator -= fixedDelta;
     }
 
@@ -430,6 +476,13 @@ export class PhysicsEngine {
     for (const body of dynamicBodies) {
       if (body.label === 'seesaw_plank') {
         const initialAngle = body.plugin?.gadget?.angle ?? 0;
+        // Hold at resting angle until significant impact arrives (static fulcrum friction)
+        if (!body.plugin?.isTriggered) {
+          Body.setAngle(body, initialAngle);
+          Body.setAngularVelocity(body, 0);
+          continue;
+        }
+
         const relAngle = body.angle - initialAngle;
         const maxTilt = 0.46; // ~26.3 degrees max travel
         if (relAngle > maxTilt) {
@@ -455,7 +508,7 @@ export class PhysicsEngine {
 
         if (dist < 46) {
           // If close to center bottom spout, let it drop naturally
-          if (Math.abs(dx) < 14 && dy > 14) {
+          if (Math.abs(dx) < 18) {
             continue;
           }
 
@@ -465,10 +518,10 @@ export class PhysicsEngine {
           const tangent = { x: -Math.sin(angle) * swirlSign, y: Math.cos(angle) * swirlSign };
           const inward = { x: -dx / (dist + 0.01), y: -dy / (dist + 0.01) };
 
-          // Orbital guide force + slight upward buoyancy to counter gravity for 1-2 smooth swirls
+          // Orbital guide force + slight upward buoyancy only near the top
           Body.applyForce(body, body.position, {
             x: tangent.x * 0.00035 + inward.x * 0.00025,
-            y: -0.00065
+            y: dy < 0 ? -0.00025 : 0
           });
 
           // Viscous drag for spiral decay
@@ -605,6 +658,10 @@ export class PhysicsEngine {
           friction: 0.01,
           frictionAir: 0.001,
           density: 0.0035, // dense enough to apply solid torque on paddle wheel
+          collisionFilter: {
+            category: 0x0004,
+            mask: 0xFFFFFFFF ^ 0x0002 // Collides with everything except marble (fluid pass-through)
+          },
           label: 'water_drop'
         });
         drop.plugin = { birthTime: Date.now() };
@@ -631,7 +688,7 @@ export class PhysicsEngine {
     const activeDrops: { body: Matter.Body; birthTime: number }[] = [];
     for (const d of this.waterDrops) {
       const age = nowTime - d.birthTime;
-      const isDead = age > 5000 || d.body.position.y > this.floorY + 30 || d.body.position.y < -200;
+      const isDead = age > 3000 || d.body.position.y > this.floorY + 30 || d.body.position.y < -200;
       if (isDead) {
         Composite.remove(this.engine.world, d.body);
       } else {
