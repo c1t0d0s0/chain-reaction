@@ -5,6 +5,72 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><circle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22%23ef4444%22/><circle cx=%2235%22 cy=%2235%22 r=%2212%22 fill=%22white%22 opacity=%220.6%22/></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ピタゴラ・チェインリアクション (Chain Reaction Studio)</title>
+    <!-- Google Analytics (embedded only if GTM_ID is retrieved from config.js) -->
+    <script>
+      (function() {
+        function injectGoogleAnalytics(gtmId) {
+          if (!gtmId || window._gaInitialized) return;
+          window._gaInitialized = true;
+
+          // Google Tag Manager (if ID starts with GTM-)
+          if (gtmId.indexOf('GTM-') === 0) {
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({ 'gtm.start': new Date().getTime(), event: 'gtm.js' });
+            var gtmScript = document.createElement('script');
+            gtmScript.async = true;
+            gtmScript.src = 'https://www.googletagmanager.com/gtm.js?id=' + encodeURIComponent(gtmId);
+            document.head.appendChild(gtmScript);
+          }
+
+          // Google tag (gtag.js) for Google Analytics 4 (G-XXXXX) and Universal Analytics
+          var gaScript = document.createElement('script');
+          gaScript.async = true;
+          gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(gtmId);
+          document.head.appendChild(gaScript);
+
+          window.dataLayer = window.dataLayer || [];
+          function gtag() {
+            window.dataLayer.push(arguments);
+          }
+          window.gtag = gtag;
+          gtag('js', new Date());
+          gtag('config', gtmId);
+        }
+
+        // 1. Check if already defined in global scope
+        try {
+          if (typeof GTM_ID !== 'undefined' && GTM_ID) {
+            injectGoogleAnalytics(GTM_ID);
+            return;
+          }
+          if (window.GTM_ID) {
+            injectGoogleAnalytics(window.GTM_ID);
+            return;
+          }
+        } catch (e) {}
+
+        // 2. Retrieve GTM_ID from config.js if present
+        try {
+          fetch('./config.js')
+            .then(function(res) {
+              return res.ok ? res.text() : null;
+            })
+            .then(function(text) {
+              if (!text) return;
+              var match = text.match(/(?:const|let|var|window\.)?\s*GTM_ID\s*=\s*['"]([^'"]+)['"]/);
+              if (match && match[1]) {
+                var id = match[1].trim();
+                if (id) {
+                  injectGoogleAnalytics(id);
+                }
+              }
+            })
+            .catch(function() {
+              // Silently ignore if config.js is not present
+            });
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body class="bg-slate-900 text-slate-100 overflow-hidden select-none">
     <div id="root"></div>
