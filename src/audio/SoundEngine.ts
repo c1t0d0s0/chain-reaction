@@ -174,28 +174,75 @@ class SoundEngine {
     osc.stop(now + 0.07);
   }
 
-  // Domino topple click (カチッ)
+  // Domino topple click & clatter (リアルなドミノの「カタッ」「パタッ」という小気味よい硬質衝突音)
   public playDominoClick(velocity: number = 5) {
     this.initContext();
     if (!this.ctx || !this.masterGain) return;
     const now = this.ctx.currentTime;
-    const volume = Math.min(Math.max(velocity / 10, 0.1), 0.8) * 0.35;
+    const volume = Math.min(Math.max(velocity / 6, 0.25), 1.0) * 0.48;
 
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sine';
-    const f = 1400 + Math.random() * 300;
-    osc.frequency.setValueAtTime(f, now);
-    osc.frequency.exponentialRampToValueAtTime(300, now + 0.03);
+    // 1. Sharp high-frequency transient click (硬質なアタック音)
+    const clickOsc = this.ctx.createOscillator();
+    const clickGain = this.ctx.createGain();
+    const clickFilter = this.ctx.createBiquadFilter();
 
-    gain.gain.setValueAtTime(volume, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+    clickOsc.type = 'triangle';
+    clickOsc.frequency.setValueAtTime(2800 + Math.random() * 800, now);
+    clickOsc.frequency.exponentialRampToValueAtTime(1200, now + 0.012);
 
-    osc.connect(gain);
-    gain.connect(this.masterGain);
+    clickFilter.type = 'highpass';
+    clickFilter.frequency.setValueAtTime(1400, now);
 
-    osc.start(now);
-    osc.stop(now + 0.04);
+    clickGain.gain.setValueAtTime(volume * 0.8, now);
+    clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.015);
+
+    clickOsc.connect(clickFilter);
+    clickFilter.connect(clickGain);
+    clickGain.connect(this.masterGain);
+
+    clickOsc.start(now);
+    clickOsc.stop(now + 0.02);
+
+    // 2. Woody resonant body tone (木製・アクリル製ドミノ特有の乾いた胴鳴り)
+    const bodyOsc = this.ctx.createOscillator();
+    const bodyGain = this.ctx.createGain();
+    const bodyFilter = this.ctx.createBiquadFilter();
+
+    // Natural slight pitch variation (1150Hz - 1500Hz) so consecutive pieces create a rhythmic clatter
+    const baseFreq = 1200 + Math.random() * 320;
+    bodyOsc.type = 'sine';
+    bodyOsc.frequency.setValueAtTime(baseFreq, now);
+    bodyOsc.frequency.exponentialRampToValueAtTime(baseFreq * 0.65, now + 0.035);
+
+    bodyFilter.type = 'bandpass';
+    bodyFilter.frequency.setValueAtTime(baseFreq, now);
+    bodyFilter.Q.setValueAtTime(3.5, now);
+
+    bodyGain.gain.setValueAtTime(volume * 0.9, now);
+    bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+    bodyOsc.connect(bodyFilter);
+    bodyFilter.connect(bodyGain);
+    bodyGain.connect(this.masterGain);
+
+    bodyOsc.start(now);
+    bodyOsc.stop(now + 0.045);
+
+    // 3. Subtle low-end tactile thud (コトッという重量感)
+    const thudOsc = this.ctx.createOscillator();
+    const thudGain = this.ctx.createGain();
+    thudOsc.type = 'triangle';
+    thudOsc.frequency.setValueAtTime(320 + Math.random() * 60, now);
+    thudOsc.frequency.exponentialRampToValueAtTime(110, now + 0.025);
+
+    thudGain.gain.setValueAtTime(volume * 0.5, now);
+    thudGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+
+    thudOsc.connect(thudGain);
+    thudGain.connect(this.masterGain);
+
+    thudOsc.start(now);
+    thudOsc.stop(now + 0.03);
   }
 
   // Spring Bounce "ボヨヨ〜ン"

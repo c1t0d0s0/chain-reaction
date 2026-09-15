@@ -87,10 +87,43 @@ export class PhysicsEngine {
           continue;
         }
 
-        // Domino clack
+        // Domino collision dynamics & sound
         if (labelA === 'domino' && labelB === 'domino') {
-          soundEngine.playDominoClick(speed);
+          // Angular impulse transfer: ensure next domino rotates forward crisply
+          const pusher = Math.abs(bodyA.angle) > Math.abs(bodyB.angle) ? bodyA : bodyB;
+          const target = pusher === bodyA ? bodyB : bodyA;
+          const dir = Math.sign(pusher.angle) || 1;
+          const transfer = Math.max(Math.abs(pusher.angularVelocity) * 0.92, 0.08);
+          Body.setAngularVelocity(target, dir * Math.max(Math.abs(target.angularVelocity), transfer));
+
+          if (speed >= 0.15) {
+            soundEngine.playDominoClick(speed);
+          }
           continue;
+        }
+
+        // Marble hits domino
+        if ((labelA.includes('marble') && labelB === 'domino') || (labelB.includes('marble') && labelA === 'domino')) {
+          const marble = labelA.includes('marble') ? bodyA : bodyB;
+          const dom = labelA === 'domino' ? bodyA : bodyB;
+          const dir = Math.sign(marble.velocity.x) || 1;
+          const kick = Math.min(Math.abs(marble.velocity.x) * 0.04, 0.20);
+          Body.setAngularVelocity(dom, dom.angularVelocity + dir * kick);
+
+          if (speed >= 0.18) {
+            soundEngine.playDominoClick(speed);
+          }
+          continue;
+        }
+
+        // Domino hits brick, book, seesaw, or plank
+        if (
+          (labelA === 'domino' && (labelB === 'brick' || labelB === 'book' || labelB === 'seesaw_plank' || labelB === 'plank')) ||
+          (labelB === 'domino' && (labelA === 'brick' || labelA === 'book' || labelA === 'seesaw_plank' || labelA === 'plank'))
+        ) {
+          if (speed >= 0.2) {
+            soundEngine.playDominoClick(speed);
+          }
         }
 
         // Magnet snap
@@ -553,6 +586,27 @@ export class PhysicsEngine {
               x: (dx / dist) * factor * sign,
               y: (dy / dist) * factor * sign
             });
+          }
+        }
+      }
+    }
+
+    // 2.4 Enhanced Domino Toppling Dynamics: Natural gravitational acceleration & base pivot traction
+    for (const body of dynamicBodies) {
+      if (body.label === 'domino') {
+        const angle = body.angle;
+        const absAngle = Math.abs(angle);
+
+        // When tilted past ~3.5 degrees (0.06 rad) and not yet resting flat (< 1.30 rad / ~75 deg)
+        if (absAngle > 0.06 && absAngle < 1.30) {
+          const dir = Math.sign(angle) || 1;
+          // Natural forward gravity torque that accelerates as the domino tilts
+          const toppleTorque = dir * body.mass * (0.0035 + Math.sin(absAngle) * 0.009);
+          body.torque += toppleTorque;
+
+          // Ground anti-slip traction: prevent base from sliding like an ice puck, converting motion into rotational pivot
+          if (Math.abs(body.velocity.x) > 0.02) {
+            body.velocity.x *= 0.65;
           }
         }
       }

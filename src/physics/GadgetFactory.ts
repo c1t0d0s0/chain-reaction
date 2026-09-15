@@ -142,13 +142,14 @@ export class GadgetFactory {
     const w = data.options?.width || 11;
     const h = data.options?.height || 54;
 
-    // Domino piece: balanced pivot base and energetic momentum transfer for continuous chain reaction
+    // Domino piece: slick face-to-face contact (low friction) and low bounce for energetic momentum propagation
     const domino = Bodies.rectangle(data.x, data.y, w, h, {
       isStatic: false,
-      friction: 0.35,
-      frictionStatic: 0.6,
-      restitution: 0.35,
-      density: 0.0035,
+      friction: data.options?.friction ?? 0.08,
+      frictionStatic: 0.3,
+      restitution: data.options?.restitution ?? 0.18,
+      density: data.options?.density ?? 0.0035,
+      frictionAir: 0.0006,
       angle: data.angle,
       label: 'domino'
     });

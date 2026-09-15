@@ -47,23 +47,23 @@ export const DEFAULT_COURSES: CourseData[] = [
       {
         id: 'plank-3',
         type: 'plank',
-        x: 425,
+        x: 440,
         y: 345,
         angle: 0.02,
-        options: { width: 200, height: 16 }
+        options: { width: 220, height: 16 }
       },
-      // Domino Chain (6 pieces spaced at 26px)
-      { id: 'dom-1', type: 'domino', x: 360, y: 310, angle: 0 },
-      { id: 'dom-2', type: 'domino', x: 386, y: 310, angle: 0 },
-      { id: 'dom-3', type: 'domino', x: 412, y: 310, angle: 0 },
-      { id: 'dom-4', type: 'domino', x: 438, y: 310, angle: 0 },
-      { id: 'dom-5', type: 'domino', x: 464, y: 310, angle: 0 },
-      { id: 'dom-6', type: 'domino', x: 490, y: 310, angle: 0 },
+      // Domino Chain (6 pieces spaced at 23px for snappy pat-pat cascade)
+      { id: 'dom-1', type: 'domino', x: 376, y: 310, angle: 0 },
+      { id: 'dom-2', type: 'domino', x: 399, y: 310, angle: 0 },
+      { id: 'dom-3', type: 'domino', x: 422, y: 310, angle: 0 },
+      { id: 'dom-4', type: 'domino', x: 445, y: 310, angle: 0 },
+      { id: 'dom-5', type: 'domino', x: 468, y: 310, angle: 0 },
+      { id: 'dom-6', type: 'domino', x: 491, y: 310, angle: 0 },
       // Standing Brick
       {
         id: 'brick-1',
         type: 'brick',
-        x: 520,
+        x: 516,
         y: 300,
         angle: 0,
         options: { width: 18, height: 65 }
