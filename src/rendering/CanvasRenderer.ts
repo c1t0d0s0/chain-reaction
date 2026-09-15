@@ -1653,60 +1653,183 @@ export class CanvasRenderer {
 
     // 2. Suspension Ropes & Buckets
     if (bucketLeft && bucketRight) {
+      const bW = anchor.plugin?.bW || 86;
+      const bH = anchor.plugin?.bH || 46;
+
       ctx.strokeStyle = '#fde68a'; // hemp rope color
       ctx.lineWidth = 2;
       ctx.beginPath();
       // Left rope
       ctx.moveTo(x - 14, y);
-      ctx.lineTo(bucketLeft.position.x, bucketLeft.position.y - 10);
+      ctx.lineTo(bucketLeft.position.x, bucketLeft.position.y - bH / 2 - 12);
       // Over wheel arc
       ctx.arc(x, y, 14, Math.PI, 0, false);
       // Right rope
-      ctx.lineTo(bucketRight.position.x, bucketRight.position.y - 10);
+      ctx.lineTo(bucketRight.position.x, bucketRight.position.y - bH / 2 - 12);
       ctx.stroke();
 
       // 3. Draw Buckets
-      const drawBucket = (b: Matter.Body) => {
+      const drawBucket = (b: Matter.Body, isLeft: boolean) => {
         ctx.save();
         ctx.translate(b.position.x, b.position.y);
         ctx.rotate(b.angle);
 
-        const bW = 46;
-        const bH = 34;
+        const rawWater = isLeft
+          ? (anchor.plugin?.waterLevelLeft ?? b.plugin?.waterLevel ?? 0)
+          : (anchor.plugin?.waterLevelRight ?? b.plugin?.waterLevel ?? 0);
+        const waterLevel = Math.max(0, Math.min(1, rawWater));
+        const isOverflowing = isLeft
+          ? !!anchor.plugin?.isOverflowingLeft
+          : !!anchor.plugin?.isOverflowingRight;
 
-        // Wire bail handle
+        const wallTh = anchor.plugin?.wallTh || 6;
+        const bottomTh = anchor.plugin?.bottomTh || 18;
+        const innerW = bW - 2 * wallTh;
+        const floorY = bH / 2 - bottomTh;
+        const topY = -bH / 2 + 4;
+        const maxWaterH = floorY - topY;
+
+        // Wire bail handle (drawn behind bucket)
         ctx.strokeStyle = '#94a3b8';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(-bW / 2 + 4, -bH / 2 + 6);
-        ctx.lineTo(0, -bH / 2 - 10);
-        ctx.lineTo(bW / 2 - 4, -bH / 2 + 6);
+        ctx.moveTo(-bW / 2 + 6, -bH / 2 + 6);
+        ctx.lineTo(0, -bH / 2 - 12);
+        ctx.lineTo(bW / 2 - 6, -bH / 2 + 6);
         ctx.stroke();
 
-        // Wooden bucket body
+        // Wooden bucket body silhouette
         const bucketGrad = ctx.createLinearGradient(-bW / 2, 0, bW / 2, 0);
-        bucketGrad.addColorStop(0, '#b45309');
+        bucketGrad.addColorStop(0, '#92400e');
+        bucketGrad.addColorStop(0.2, '#b45309');
         bucketGrad.addColorStop(0.5, '#d97706');
-        bucketGrad.addColorStop(1, '#b45309');
+        bucketGrad.addColorStop(0.8, '#b45309');
+        bucketGrad.addColorStop(1, '#78350f');
 
         ctx.fillStyle = bucketGrad;
         ctx.beginPath();
-        ctx.roundRect(-bW / 2, -bH / 2 + 4, bW, bH - 4, [2, 2, 8, 8]);
+        ctx.roundRect(-bW / 2, -bH / 2 + 4, bW, bH - 4, [3, 3, 10, 10]);
         ctx.fill();
+
+        // Hollow interior cavity (dark shaded oak interior)
+        const innerGrad = ctx.createLinearGradient(0, topY, 0, floorY);
+        innerGrad.addColorStop(0, '#291403');
+        innerGrad.addColorStop(1, '#451a03');
+        ctx.fillStyle = innerGrad;
+        ctx.beginPath();
+        ctx.roundRect(-innerW / 2, topY, innerW, maxWaterH, [1, 1, 4, 4]);
+        ctx.fill();
+
+        // Water Liquid inside cavity
+        if (waterLevel > 0.005) {
+          const liquidH = maxWaterH * waterLevel;
+          const surfaceY = floorY - liquidH;
+
+          // Sparkling translucent water gradient
+          const waterGrad = ctx.createLinearGradient(0, surfaceY, 0, floorY);
+          waterGrad.addColorStop(0, 'rgba(56, 189, 248, 0.90)'); // bright sky blue
+          waterGrad.addColorStop(0.4, 'rgba(14, 165, 233, 0.92)'); // cerulean
+          waterGrad.addColorStop(1, 'rgba(3, 105, 161, 0.96)'); // deep ocean blue
+
+          ctx.fillStyle = waterGrad;
+          ctx.beginPath();
+          ctx.roundRect(-innerW / 2, surfaceY, innerW, liquidH, [0, 0, 4, 4]);
+          ctx.fill();
+
+          // Surface line & glistening meniscus highlight
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          if (waterLevel >= 0.98) {
+            // Convex surface tension curve bulging slightly above the rim
+            ctx.moveTo(-innerW / 2, surfaceY);
+            ctx.quadraticCurveTo(0, surfaceY - 2.5, innerW / 2, surfaceY);
+          } else {
+            ctx.moveTo(-innerW / 2, surfaceY);
+            ctx.lineTo(innerW / 2, surfaceY);
+          }
+          ctx.stroke();
+
+          // Water surface specular reflection gleam
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+          ctx.beginPath();
+          ctx.ellipse(-innerW / 4, surfaceY + 1.5, innerW / 5, 1.2, 0, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Rising micro-bubbles
+          if (waterLevel > 0.15) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+            ctx.beginPath();
+            ctx.arc(-12, surfaceY + liquidH * 0.45, 1.2, 0, Math.PI * 2);
+            ctx.arc(16, surfaceY + liquidH * 0.65, 1.5, 0, Math.PI * 2);
+            ctx.arc(-4, surfaceY + liquidH * 0.8, 1.0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+
+        // Wooden outer outline & bevel
         ctx.strokeStyle = '#fde68a';
-        ctx.lineWidth = 1.2;
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.roundRect(-bW / 2, -bH / 2 + 4, bW, bH - 4, [3, 3, 10, 10]);
         ctx.stroke();
 
-        // Metal bands
+        // Steel hoops (metal bands)
         ctx.fillStyle = '#64748b';
-        ctx.fillRect(-bW / 2 + 1, -bH / 2 + 12, bW - 2, 3);
-        ctx.fillRect(-bW / 2 + 1, bH / 2 - 8, bW - 2, 3);
+        ctx.fillRect(-bW / 2 + 1, -bH / 2 + 14, bW - 2, 3.5);
+        ctx.fillRect(-bW / 2 + 1, bH / 2 - 10, bW - 2, 3.5);
+
+        // Metal hoop highlight lines
+        ctx.fillStyle = '#94a3b8';
+        ctx.fillRect(-bW / 2 + 2, -bH / 2 + 14, bW - 4, 1);
+        ctx.fillRect(-bW / 2 + 2, bH / 2 - 10, bW - 4, 1);
+
+        // Rivets on metal bands
+        ctx.fillStyle = '#cbd5e1';
+        [-bW / 2 + 5, -12, 12, bW / 2 - 5].forEach(rx => {
+          ctx.beginPath();
+          ctx.arc(rx, -bH / 2 + 15.5, 1.2, 0, Math.PI * 2);
+          ctx.arc(rx, bH / 2 - 8.5, 1.2, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Overflow spilling drips and droplets
+        if (isOverflowing || waterLevel >= 0.98) {
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.9)';
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.lineWidth = 1.2;
+
+          // Left rim spill
+          ctx.beginPath();
+          ctx.moveTo(-bW / 2 + 1, topY);
+          ctx.quadraticCurveTo(-bW / 2 - 4, topY + 4, -bW / 2 + 1, topY + 9);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Right rim spill
+          ctx.beginPath();
+          ctx.moveTo(bW / 2 - 1, topY);
+          ctx.quadraticCurveTo(bW / 2 + 4, topY + 4, bW / 2 - 1, topY + 9);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+
+          // Animated dripping splash droplets
+          const t = Date.now() / 150;
+          const dropOffset = (t % 1) * 8;
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
+          ctx.beginPath();
+          ctx.arc(-bW / 2 - 3, topY + 10 + dropOffset, 1.8, 0, Math.PI * 2);
+          ctx.arc(bW / 2 + 3, topY + 10 + dropOffset, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
 
         ctx.restore();
       };
 
-      drawBucket(bucketLeft);
-      drawBucket(bucketRight);
+      drawBucket(bucketLeft, true);
+      drawBucket(bucketRight, false);
     }
 
     ctx.restore();

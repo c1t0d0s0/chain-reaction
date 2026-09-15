@@ -41,6 +41,8 @@ export interface GadgetOptions {
   flowRate?: number; // for faucet water stream rate
   autoFlow?: boolean; // for faucet start immediately vs triggered
   waterAmount?: number; // 0.0 to 1.0 initial water fill level for paper cup
+  waterAmountLeft?: number; // 0.0 to 1.0 initial water fill level for pulley left bucket
+  waterAmountRight?: number; // 0.0 to 1.0 initial water fill level for pulley right bucket
 }
 
 export interface GadgetData {

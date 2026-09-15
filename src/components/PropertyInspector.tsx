@@ -483,24 +483,104 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
           </div>
         )}
 
-        {/* Pulley Rope Span */}
+        {/* Pulley Rope Span & Bucket Water */}
         {currentGadget.type === 'pulley' && (
-          <div>
-            <div className="flex justify-between items-center mb-1.5">
-              <span className="text-slate-300 font-medium">ロープ間隔 (スパン)</span>
-              <span className="font-mono text-emerald-300 font-bold">
-                {currentGadget.options?.span || 140}px
-              </span>
+          <div className="space-y-3">
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-slate-300 font-medium">ロープ間隔 (スパン)</span>
+                <span className="font-mono text-emerald-300 font-bold">
+                  {currentGadget.options?.span || 140}px
+                </span>
+              </div>
+              <input
+                type="range"
+                min="100"
+                max="240"
+                step="10"
+                value={currentGadget.options?.span || 140}
+                onChange={(e) => updateGadget({ options: { span: Number(e.target.value) } })}
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
+              />
             </div>
-            <input
-              type="range"
-              min="100"
-              max="240"
-              step="10"
-              value={currentGadget.options?.span || 140}
-              onChange={(e) => updateGadget({ options: { span: Number(e.target.value) } })}
-              className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-500"
-            />
+
+            {/* Left Bucket Initial Water */}
+            <div className="pt-1 border-t border-slate-700/60">
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-slate-300 font-medium">左バケツの水量</span>
+                <span className="font-mono text-sky-400 font-bold">
+                  {Math.round((currentGadget.options?.waterAmountLeft ?? (currentGadget.options?.waterAmount ?? 0)) * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={currentGadget.options?.waterAmountLeft ?? (currentGadget.options?.waterAmount ?? 0)}
+                onChange={(e) => updateGadget({ options: { waterAmountLeft: Number(e.target.value) } })}
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500"
+              />
+              <div className="grid grid-cols-3 gap-1.5 mt-2">
+                {[
+                  { label: '空 (0%)', val: 0 },
+                  { label: '半分 (50%)', val: 0.5 },
+                  { label: '満杯 (100%)', val: 1.0 }
+                ].map((p) => (
+                  <button
+                    key={p.val}
+                    type="button"
+                    onClick={() => updateGadget({ options: { waterAmountLeft: p.val } })}
+                    className={`py-1 text-xs rounded border transition ${
+                      (currentGadget.options?.waterAmountLeft ?? (currentGadget.options?.waterAmount ?? 0)) === p.val
+                        ? 'bg-sky-600/30 border-sky-500 text-sky-300 font-bold'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Right Bucket Initial Water */}
+            <div className="pt-1 border-t border-slate-700/60">
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-slate-300 font-medium">右バケツの水量</span>
+                <span className="font-mono text-sky-400 font-bold">
+                  {Math.round((currentGadget.options?.waterAmountRight ?? 0) * 100)}%
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.05"
+                value={currentGadget.options?.waterAmountRight ?? 0}
+                onChange={(e) => updateGadget({ options: { waterAmountRight: Number(e.target.value) } })}
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500"
+              />
+              <div className="grid grid-cols-3 gap-1.5 mt-2">
+                {[
+                  { label: '空 (0%)', val: 0 },
+                  { label: '半分 (50%)', val: 0.5 },
+                  { label: '満杯 (100%)', val: 1.0 }
+                ].map((p) => (
+                  <button
+                    key={p.val}
+                    type="button"
+                    onClick={() => updateGadget({ options: { waterAmountRight: p.val } })}
+                    className={`py-1 text-xs rounded border transition ${
+                      (currentGadget.options?.waterAmountRight ?? 0) === p.val
+                        ? 'bg-sky-600/30 border-sky-500 text-sky-300 font-bold'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         )}
 

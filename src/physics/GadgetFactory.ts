@@ -598,44 +598,60 @@ export class GadgetFactory {
       label: 'pulley_wheel'
     });
 
-    // Left Bucket (U-shaped cup)
-    const bW = 46;
-    const bH = 34;
-    const th = 6;
+    // Left Bucket (U-shaped cup with sturdy floor and wide span to hold a brick)
+    const bW = 86;
+    const bH = 46;
+    const wallTh = 6;
+    const bottomTh = 18;
 
-    const leftBottom = Bodies.rectangle(data.x - halfSpan, data.y + hangLength + bH / 2 - th / 2, bW, th, { label: 'pulley_bucket_left' });
-    const leftW1 = Bodies.rectangle(data.x - halfSpan - bW / 2 + th / 2, data.y + hangLength, th, bH, { label: 'pulley_bucket_left' });
-    const leftW2 = Bodies.rectangle(data.x - halfSpan + bW / 2 - th / 2, data.y + hangLength, th, bH, { label: 'pulley_bucket_left' });
+    const leftBottom = Bodies.rectangle(data.x - halfSpan, data.y + hangLength + bH / 2 - bottomTh / 2, bW, bottomTh, { label: 'pulley_bucket_bottom' });
+    const leftW1 = Bodies.rectangle(data.x - halfSpan - bW / 2 + wallTh / 2, data.y + hangLength, wallTh, bH, { label: 'pulley_bucket_left' });
+    const leftW2 = Bodies.rectangle(data.x - halfSpan + bW / 2 - wallTh / 2, data.y + hangLength, wallTh, bH, { label: 'pulley_bucket_left' });
 
     const bucketLeft = Body.create({
       parts: [leftBottom, leftW1, leftW2],
-      friction: 0.2,
-      density: 0.0018,
+      friction: 0.8,
+      density: 0.002,
       label: 'pulley_bucket_left'
     });
 
-    // Right Bucket (starts slightly higher or same height)
-    const rightBottom = Bodies.rectangle(data.x + halfSpan, data.y + hangLength + bH / 2 - th / 2, bW, th, { label: 'pulley_bucket_right' });
-    const rightW1 = Bodies.rectangle(data.x + halfSpan - bW / 2 + th / 2, data.y + hangLength, th, bH, { label: 'pulley_bucket_right' });
-    const rightW2 = Bodies.rectangle(data.x + halfSpan + bW / 2 - th / 2, data.y + hangLength, th, bH, { label: 'pulley_bucket_right' });
+    // Right Bucket
+    const rightBottom = Bodies.rectangle(data.x + halfSpan, data.y + hangLength + bH / 2 - bottomTh / 2, bW, bottomTh, { label: 'pulley_bucket_bottom' });
+    const rightW1 = Bodies.rectangle(data.x + halfSpan - bW / 2 + wallTh / 2, data.y + hangLength, wallTh, bH, { label: 'pulley_bucket_right' });
+    const rightW2 = Bodies.rectangle(data.x + halfSpan + bW / 2 - wallTh / 2, data.y + hangLength, wallTh, bH, { label: 'pulley_bucket_right' });
 
     const bucketRight = Body.create({
       parts: [rightBottom, rightW1, rightW2],
-      friction: 0.2,
-      density: 0.0018,
+      friction: 0.8,
+      density: 0.002,
       label: 'pulley_bucket_right'
     });
+
+    const initialWaterLeft = Math.max(0, Math.min(1, data.options?.waterAmountLeft ?? (data.options?.waterAmount ?? 0)));
+    const initialWaterRight = Math.max(0, Math.min(1, data.options?.waterAmountRight ?? 0));
 
     pulleyAnchor.plugin = {
       gadgetId: data.id,
       gadget: data,
       bucketLeft,
       bucketRight,
+      leftBottomPart: leftBottom,
+      rightBottomPart: rightBottom,
       hangLength,
       hangOffset: 0,
       hangVelocity: 0,
+      initialLeftY: bucketLeft.position.y,
+      initialRightY: bucketRight.position.y,
       initialY: data.y + hangLength,
       span,
+      bW,
+      bH,
+      bottomTh,
+      wallTh,
+      waterLevelLeft: initialWaterLeft,
+      waterLevelRight: initialWaterRight,
+      isOverflowingLeft: false,
+      isOverflowingRight: false,
       totalLength: hangLength * 2
     };
     bucketLeft.plugin = pulleyAnchor.plugin;

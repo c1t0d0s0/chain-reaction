@@ -126,7 +126,7 @@ export class PhysicsEngine {
           const catPart = (labelA.includes('catapult') ? bodyA : bodyB) as any;
           const catParent = catPart.parent || catPart;
           const pivotX = catParent.plugin?.gadget?.x ?? catParent.position.x;
-          if (marbleBody && marbleBody.position.x < pivotX - 10 && marbleBody.velocity.y > 0.1) {
+          if (marbleBody && marbleBody.position.x < pivotX + 15 && marbleBody.velocity.y > 0.1) {
             if (!catParent.plugin?.isFired) {
               if (catParent.plugin) {
                 catParent.plugin.isFired = true;
@@ -637,31 +637,149 @@ export class PhysicsEngine {
     const pulleys = Array.from(this.bundles.values()).filter(b => b.type === 'pulley');
     for (const p of pulleys) {
       const anchor = p.mainBody;
-      const { bucketLeft, bucketRight, span = 140, hangLength = 85 } = anchor.plugin || {};
+      const {
+        bucketLeft,
+        bucketRight,
+        leftBottomPart,
+        rightBottomPart,
+        span = 140,
+        hangLength = 85,
+        bW = 86,
+        bH = 46,
+        wallTh = 6,
+        bottomTh = 18
+      } = anchor.plugin || {};
       if (!bucketLeft || !bucketRight) continue;
 
-      // 1. Counteract global gravity on both buckets so they never creep down when idle
-      Body.applyForce(bucketLeft, bucketLeft.position, { x: 0, y: -bucketLeft.mass * 0.001 });
-      Body.applyForce(bucketRight, bucketRight.position, { x: 0, y: -bucketRight.mass * 0.001 });
+      if (anchor.plugin.waterLevelLeft === undefined) anchor.plugin.waterLevelLeft = 0;
+      if (anchor.plugin.waterLevelRight === undefined) anchor.plugin.waterLevelRight = 0;
 
-      // 2. Measure additional payload resting inside each bucket
-      let extraMassLeft = 0;
-      let extraMassRight = 0;
+      // 1. Water Drop Collection into Buckets
+      const innerW = bW - 2 * (anchor.plugin?.wallTh || 6);
+      const innerFloorLeftY = leftBottomPart ? leftBottomPart.bounds.min.y : (bucketLeft.position.y + 15);
+      const topRimLeftY = bucketLeft.position.y - bH / 2;
+
+      const innerFloorRightY = rightBottomPart ? rightBottomPart.bounds.min.y : (bucketRight.position.y + 15);
+      const topRimRightY = bucketRight.position.y - bH / 2;
+
+      let newDropsAdded = 0;
+      for (const d of this.waterDrops) {
+        if ((d as any).isAbsorbed || d.body.plugin?.fromBucket) continue;
+        const pos = d.body.position;
+
+        // Left Bucket Cavity Check
+        if (Math.abs(pos.x - bucketLeft.position.x) <= innerW / 2 + 3 &&
+            pos.y >= topRimLeftY - 8 && pos.y <= innerFloorLeftY + 4) {
+          (d as any).isAbsorbed = true;
+          Composite.remove(this.engine.world, d.body);
+
+          if (anchor.plugin.waterLevelLeft < 1.0) {
+            anchor.plugin.waterLevelLeft = Math.min(1.0, anchor.plugin.waterLevelLeft + 0.035);
+            newDropsAdded++;
+          } else {
+            // Already full -> queue overflow drop
+            anchor.plugin.overflowLeftBuffer = (anchor.plugin.overflowLeftBuffer || 0) + 1;
+          }
+        }
+
+        // Right Bucket Cavity Check
+        if (Math.abs(pos.x - bucketRight.position.x) <= innerW / 2 + 3 &&
+            pos.y >= topRimRightY - 8 && pos.y <= innerFloorRightY + 4) {
+          (d as any).isAbsorbed = true;
+          Composite.remove(this.engine.world, d.body);
+
+          if (anchor.plugin.waterLevelRight < 1.0) {
+            anchor.plugin.waterLevelRight = Math.min(1.0, anchor.plugin.waterLevelRight + 0.035);
+            newDropsAdded++;
+          } else {
+            anchor.plugin.overflowRightBuffer = (anchor.plugin.overflowRightBuffer || 0) + 1;
+          }
+        }
+      }
+
+      if (newDropsAdded > 0) {
+        const now = Date.now();
+        if (!anchor.plugin.lastDripSound || now - anchor.plugin.lastDripSound > 160) {
+          anchor.plugin.lastDripSound = now;
+          soundEngine.playWaterDrip(0.25);
+        }
+      }
+
+      // 2. Overflow Spilling from Buckets
+      anchor.plugin.overflowCooldown = (anchor.plugin.overflowCooldown || 0) + 1;
+      let isOverflowingLeft = false;
+      let isOverflowingRight = false;
+
+      if ((anchor.plugin.overflowLeftBuffer || 0) > 0) {
+        isOverflowingLeft = true;
+        while (anchor.plugin.overflowLeftBuffer > 0) {
+          anchor.plugin.overflowLeftBuffer--;
+          if (anchor.plugin.overflowCooldown >= 2) {
+            anchor.plugin.overflowCooldown = 0;
+            const dir = Math.random() < 0.5 ? -1 : 1;
+            this.spawnPulleyOverflowDrop(bucketLeft, {
+              x: bucketLeft.position.x + dir * (bW / 2 - 2),
+              y: bucketLeft.position.y - bH / 2 + 2,
+              outward: dir
+            });
+          }
+        }
+      }
+
+      if ((anchor.plugin.overflowRightBuffer || 0) > 0) {
+        isOverflowingRight = true;
+        while (anchor.plugin.overflowRightBuffer > 0) {
+          anchor.plugin.overflowRightBuffer--;
+          if (anchor.plugin.overflowCooldown >= 2) {
+            anchor.plugin.overflowCooldown = 0;
+            const dir = Math.random() < 0.5 ? -1 : 1;
+            this.spawnPulleyOverflowDrop(bucketRight, {
+              x: bucketRight.position.x + dir * (bW / 2 - 2),
+              y: bucketRight.position.y - bH / 2 + 2,
+              outward: dir
+            });
+          }
+        }
+      }
+
+      anchor.plugin.isOverflowingLeft = isOverflowingLeft;
+      anchor.plugin.isOverflowingRight = isOverflowingRight;
+      bucketLeft.plugin.waterLevel = anchor.plugin.waterLevelLeft;
+      bucketRight.plugin.waterLevel = anchor.plugin.waterLevelRight;
+      bucketLeft.plugin.isOverflowing = isOverflowingLeft;
+      bucketRight.plugin.isOverflowing = isOverflowingRight;
+
+      // 3. Measure additional payload resting inside each bucket (including accumulated water)
+      const waterMassLeft = (anchor.plugin.waterLevelLeft || 0) * 8.0;
+      const waterMassRight = (anchor.plugin.waterLevelRight || 0) * 8.0;
+
+      let extraMassLeft = waterMassLeft * 3.5;
+      let extraMassRight = waterMassRight * 3.5;
       const bLeftBounds = bucketLeft.bounds;
       const bRightBounds = bucketRight.bounds;
 
+      const payloadsLeft: Matter.Body[] = [];
+      const payloadsRight: Matter.Body[] = [];
+
       for (const b of dynamicBodies) {
-        if (b === bucketLeft || b === bucketRight) continue;
+        if (b === bucketLeft || b === bucketRight || b.label === 'water_drop') continue;
         const pos = b.position;
         if (pos.x >= bLeftBounds.min.x - 4 && pos.x <= bLeftBounds.max.x + 4 &&
-            pos.y >= bLeftBounds.min.y - 14 && pos.y <= bLeftBounds.max.y + 8) {
+            pos.y >= bLeftBounds.min.y - 20 && pos.y <= bLeftBounds.max.y + 16) {
           extraMassLeft += b.mass * 3.5;
+          payloadsLeft.push(b);
         }
         if (pos.x >= bRightBounds.min.x - 4 && pos.x <= bRightBounds.max.x + 4 &&
-            pos.y >= bRightBounds.min.y - 14 && pos.y <= bRightBounds.max.y + 8) {
+            pos.y >= bRightBounds.min.y - 20 && pos.y <= bRightBounds.max.y + 16) {
           extraMassRight += b.mass * 3.5;
+          payloadsRight.push(b);
         }
       }
+
+      // 4. Counteract gravity and support payload weight on buckets (maintains rope suspension without sag)
+      const grav = 0.001;
+      Body.applyForce(bucketLeft, bucketLeft.position, { x: 0, y: -(bucketLeft.mass + extraMassLeft / 3.5) * grav });
+      Body.applyForce(bucketRight, bucketRight.position, { x: 0, y: -(bucketRight.mass + extraMassRight / 3.5) * grav });
 
       // 3. Static friction threshold: if no significant difference, remain 100% still
       let massDiff = extraMassLeft - extraMassRight;
@@ -676,6 +794,15 @@ export class PhysicsEngine {
       }
 
       const maxTravel = 65; // max vertical travel
+
+      // Smooth deceleration near travel limits
+      if (anchor.plugin.hangOffset > maxTravel - 12 && anchor.plugin.hangVelocity > 0) {
+        anchor.plugin.hangVelocity *= 0.65;
+      }
+      if (anchor.plugin.hangOffset < -maxTravel + 12 && anchor.plugin.hangVelocity < 0) {
+        anchor.plugin.hangVelocity *= 0.65;
+      }
+
       anchor.plugin.hangOffset = (anchor.plugin.hangOffset || 0) + anchor.plugin.hangVelocity;
       if (anchor.plugin.hangOffset > maxTravel) {
         anchor.plugin.hangOffset = maxTravel;
@@ -687,18 +814,50 @@ export class PhysicsEngine {
       }
 
       // 4. Exact coupled opposite positions (rope length is 100% conserved)
-      const initialY = anchor.position.y + hangLength;
+      const initialLeftY = anchor.plugin.initialLeftY ?? (anchor.position.y + hangLength);
+      const initialRightY = anchor.plugin.initialRightY ?? (anchor.position.y + hangLength);
       const curOffset = anchor.plugin.hangOffset || 0;
       const curVy = anchor.plugin.hangVelocity || 0;
 
-      Body.setPosition(bucketLeft, { x: anchor.position.x - span / 2, y: initialY + curOffset });
-      Body.setPosition(bucketRight, { x: anchor.position.x + span / 2, y: initialY - curOffset });
+      Body.setPosition(bucketLeft, { x: anchor.position.x - span / 2, y: initialLeftY + curOffset });
+      Body.setPosition(bucketRight, { x: anchor.position.x + span / 2, y: initialRightY - curOffset });
       Body.setVelocity(bucketLeft, { x: 0, y: curVy });
       Body.setVelocity(bucketRight, { x: 0, y: -curVy });
       Body.setAngle(bucketLeft, 0);
       Body.setAngle(bucketRight, 0);
       Body.setAngularVelocity(bucketLeft, 0);
       Body.setAngularVelocity(bucketRight, 0);
+
+      // 5. Floor support clamping to prevent payload penetration/tunneling through bucket floor
+      const leftFloorY = leftBottomPart ? leftBottomPart.bounds.min.y : (bucketLeft.position.y + 15);
+      for (const pb of payloadsLeft) {
+        if (Math.abs(pb.position.x - bucketLeft.position.x) < bW / 2 + 2) {
+          const pbBottom = pb.bounds.max.y;
+          if (pbBottom > leftFloorY) {
+            const pen = pbBottom - leftFloorY;
+            Body.setPosition(pb, { x: pb.position.x, y: pb.position.y - pen });
+            if (pb.velocity.y > curVy) {
+              Body.setVelocity(pb, { x: pb.velocity.x * 0.95, y: curVy });
+            }
+            Body.setAngularVelocity(pb, pb.angularVelocity * 0.7);
+          }
+        }
+      }
+
+      const rightFloorY = rightBottomPart ? rightBottomPart.bounds.min.y : (bucketRight.position.y + 15);
+      for (const pb of payloadsRight) {
+        if (Math.abs(pb.position.x - bucketRight.position.x) < bW / 2 + 2) {
+          const pbBottom = pb.bounds.max.y;
+          if (pbBottom > rightFloorY) {
+            const pen = pbBottom - rightFloorY;
+            Body.setPosition(pb, { x: pb.position.x, y: pb.position.y - pen });
+            if (pb.velocity.y > -curVy) {
+              Body.setVelocity(pb, { x: pb.velocity.x * 0.95, y: -curVy });
+            }
+            Body.setAngularVelocity(pb, pb.angularVelocity * 0.7);
+          }
+        }
+      }
 
       if (Math.abs(curVy) > 0.35) {
         const now = Date.now();
@@ -935,6 +1094,37 @@ export class PhysicsEngine {
     const now = Date.now();
     if (!cup.plugin.lastSpillSound || now - cup.plugin.lastSpillSound > 180) {
       cup.plugin.lastSpillSound = now;
+      soundEngine.playWaterDrip(0.22);
+    }
+  }
+
+  // Spawn an overflowing water drop from pulley bucket rim
+  private spawnPulleyOverflowDrop(bucket: Matter.Body, rim: { x: number; y: number; outward: number }) {
+    const r = 3.6 + (Math.random() - 0.5) * 1.0;
+    const drop = Matter.Bodies.circle(rim.x + rim.outward * (2 + Math.random() * 2), rim.y + 2, r, {
+      restitution: 0.12,
+      friction: 0.01,
+      frictionAir: 0.001,
+      density: 0.0035,
+      collisionFilter: {
+        category: 0x0004,
+        mask: 0xFFFFFFFF ^ 0x0002
+      },
+      label: 'water_drop'
+    });
+    drop.plugin = { birthTime: Date.now(), fromBucket: true };
+
+    Matter.Body.setVelocity(drop, {
+      x: bucket.velocity.x + rim.outward * (0.8 + Math.random() * 0.8),
+      y: bucket.velocity.y + 0.8 + Math.random() * 0.6
+    });
+
+    Composite.add(this.engine.world, drop);
+    this.waterDrops.push({ body: drop, birthTime: Date.now() });
+
+    const now = Date.now();
+    if (!bucket.plugin.lastSpillSound || now - bucket.plugin.lastSpillSound > 180) {
+      bucket.plugin.lastSpillSound = now;
       soundEngine.playWaterDrip(0.22);
     }
   }
