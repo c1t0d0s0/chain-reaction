@@ -347,6 +347,7 @@ export const App: React.FC = () => {
         }}
         followMarble={followMarble}
         onToggleFollowMarble={() => setFollowMarble(!followMarble)}
+        onDrainWater={() => physics.drainFloorWater()}
       />
 
       {/* Main Workspace: Left Palette + Center Canvas + Right Property Inspector */}

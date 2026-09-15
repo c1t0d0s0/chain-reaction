@@ -27,6 +27,10 @@ export class PhysicsEngine {
   public leftWallBody: Matter.Body | null = null;
   public rightWallBody: Matter.Body | null = null;
   public waterDrops: { body: Matter.Body; birthTime: number }[] = [];
+  public floorWaterHeight: number = 0;
+  public floorWaterRipples: { x: number; radius: number; maxRadius: number; alpha: number }[] = [];
+  public maxFloorWaterHeight: number = 400;
+  private lastFloorDripSound: number = 0;
 
   constructor() {
     this.engine = Engine.create({
@@ -295,6 +299,8 @@ export class PhysicsEngine {
     this.bundles.clear();
     this.playerMarbleBody = null;
     this.waterDrops = [];
+    this.floorWaterHeight = 0;
+    this.floorWaterRipples = [];
 
     soundEngine.updateRollingSound(0, false);
     soundEngine.setFanActive(false);
@@ -323,6 +329,13 @@ export class PhysicsEngine {
       this.addGadget(marbleData);
     }
 
+    if (this.onStateChange) this.onStateChange();
+  }
+
+  // Drain floor water accumulation
+  public drainFloorWater() {
+    this.floorWaterHeight = 0;
+    this.floorWaterRipples = [];
     if (this.onStateChange) this.onStateChange();
   }
 
@@ -459,6 +472,16 @@ export class PhysicsEngine {
 
     // 3. Update rolling sound for player marble
     this.updateAudioFeedback();
+
+    // 4. Update floor water ripples
+    for (let i = this.floorWaterRipples.length - 1; i >= 0; i--) {
+      const r = this.floorWaterRipples[i];
+      r.radius += 0.8;
+      r.alpha -= 0.025;
+      if (r.alpha <= 0 || r.radius >= r.maxRadius) {
+        this.floorWaterRipples.splice(i, 1);
+      }
+    }
   }
 
   private applySpecialForces() {
@@ -531,6 +554,34 @@ export class PhysicsEngine {
               y: (dy / dist) * factor * sign
             });
           }
+        }
+      }
+    }
+
+    // 2.5 Fluid Buoyancy and Viscous Drag for Submerged Dynamic Bodies in Floor Water
+    if (this.floorWaterHeight > 1.0) {
+      const waterSurfaceY = this.floorY - this.floorWaterHeight;
+      for (const b of dynamicBodies) {
+        if (b.label === 'water_drop') continue;
+        const bBottom = b.bounds.max.y;
+        const bTop = b.bounds.min.y;
+        if (bBottom > waterSurfaceY) {
+          const totalH = Math.max(2, bBottom - bTop);
+          const subDepth = Math.min(totalH, bBottom - waterSurfaceY);
+          const subRatio = Math.max(0, Math.min(1, subDepth / totalH));
+
+          // Buoyancy based on object density relative to water
+          const densityRatio = Math.min(1.8, 0.0024 / Math.max(0.0005, b.density));
+          const buoyantForce = b.mass * 0.001 * densityRatio * subRatio;
+          Body.applyForce(b, b.position, { x: 0, y: -buoyantForce });
+
+          // Viscous fluid drag (damping motion in water)
+          const dragRatio = 0.04 * subRatio;
+          Body.setVelocity(b, {
+            x: b.velocity.x * (1 - dragRatio),
+            y: b.velocity.y * (1 - dragRatio * 1.2)
+          });
+          Body.setAngularVelocity(b, b.angularVelocity * (1 - dragRatio * 1.5));
         }
       }
     }
@@ -1047,12 +1098,43 @@ export class PhysicsEngine {
     // Clean up absorbed drops from array
     this.waterDrops = this.waterDrops.filter(d => !(d as any).isAbsorbed);
 
-    // Clean up expired or fallen water drops
+    // Clean up expired or fallen water drops, absorbing floor-bound droplets into floor pool
     const nowTime = Date.now();
+    const currentWaterSurfaceY = this.floorY - this.floorWaterHeight;
     const activeDrops: { body: Matter.Body; birthTime: number }[] = [];
+
     for (const d of this.waterDrops) {
+      if ((d as any).isAbsorbed) continue;
+      const pos = d.body.position;
+
+      // Absorb into floor water when touching floor or rising pool surface
+      if (pos.y >= currentWaterSurfaceY - 4 && pos.x >= this.leftWallX - 10 && pos.x <= this.rightWallX + 10) {
+        (d as any).isAbsorbed = true;
+        Composite.remove(this.engine.world, d.body);
+
+        if (this.floorWaterHeight < this.maxFloorWaterHeight) {
+          this.floorWaterHeight = Math.min(this.maxFloorWaterHeight, this.floorWaterHeight + 0.28);
+        }
+
+        if (this.floorWaterRipples.length < 40) {
+          this.floorWaterRipples.push({
+            x: pos.x,
+            radius: 2,
+            maxRadius: 24 + Math.random() * 8,
+            alpha: 0.85
+          });
+        }
+
+        const now = Date.now();
+        if (!this.lastFloorDripSound || now - this.lastFloorDripSound > 160) {
+          this.lastFloorDripSound = now;
+          soundEngine.playWaterDrip(0.18);
+        }
+        continue;
+      }
+
       const age = nowTime - d.birthTime;
-      const isDead = age > 3000 || d.body.position.y > this.floorY + 30 || d.body.position.y < -200 || d.body.position.x < this.leftWallX - 80 || d.body.position.x > this.rightWallX + 80;
+      const isDead = age > 3500 || pos.y > this.floorY + 40 || pos.y < -200 || pos.x < this.leftWallX - 80 || pos.x > this.rightWallX + 80;
       if (isDead) {
         Composite.remove(this.engine.world, d.body);
       } else {

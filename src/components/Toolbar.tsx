@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Pause, RotateCcw, Grid, ZoomIn, ZoomOut, Maximize2, Video, Edit3, Magnet, Pin } from 'lucide-react';
+import { Play, Pause, RotateCcw, Grid, ZoomIn, ZoomOut, Maximize2, Video, Edit3, Magnet, Pin, Droplet } from 'lucide-react';
 import { SimulationSpeed } from '../types';
 
 interface ToolbarProps {
@@ -22,6 +22,7 @@ interface ToolbarProps {
   onResetView: () => void;
   followMarble: boolean;
   onToggleFollowMarble: () => void;
+  onDrainWater?: () => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -44,6 +45,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onResetView,
   followMarble,
   onToggleFollowMarble,
+  onDrainWater,
 }) => {
   return (
     <div className="h-12 bg-slate-800/90 backdrop-blur border-b border-slate-700/60 px-4 flex items-center justify-between z-20 shadow-sm select-none">
@@ -91,6 +93,17 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <Pin className="w-3.5 h-3.5" />
               <span className="hidden md:inline">連続配置 {continuousPlacement ? 'ON' : 'OFF'}</span>
             </button>
+
+            {onDrainWater && (
+              <button
+                onClick={onDrainWater}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-700/60 hover:bg-slate-600 text-slate-300 font-medium text-xs border border-slate-600 transition active:scale-95"
+                title="床に溜まった水を排水する"
+              >
+                <Droplet className="w-3.5 h-3.5 text-sky-400" />
+                <span className="hidden md:inline">排水</span>
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -129,6 +142,17 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               <RotateCcw className="w-3.5 h-3.5" />
               <span>やり直す</span>
             </button>
+
+            {onDrainWater && (
+              <button
+                onClick={onDrainWater}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-sky-950/60 hover:bg-sky-900/80 text-sky-300 font-medium text-xs border border-sky-600/40 transition active:scale-95"
+                title="床に溜まった水を排水する"
+              >
+                <Droplet className="w-3.5 h-3.5 text-sky-400" />
+                <span>排水</span>
+              </button>
+            )}
           </>
         )}
 

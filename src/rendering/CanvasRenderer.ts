@@ -128,6 +128,17 @@ export class CanvasRenderer {
       this.drawWaterDrop(ctx, d.body);
     }
 
+    // 2.7 Draw floor water accumulation (rising translucent pool & submerged reflections/ripples)
+    this.drawFloorWater(
+      ctx,
+      physics.leftWallX,
+      physics.rightWallX,
+      physics.floorY,
+      physics.floorWaterHeight,
+      physics.floorWaterRipples,
+      physics.isRunning
+    );
+
     // 3. Draw rotation handle gizmo for selected object (in edit mode)
     if (selectedGadgetId && !physics.isRunning) {
       const bundle = physics.bundles.get(selectedGadgetId);
@@ -2057,6 +2068,210 @@ export class CanvasRenderer {
     ctx.beginPath();
     ctx.arc(-r * 0.35, -r * 0.35, r * 0.28, 0, Math.PI * 2);
     ctx.fill();
+
+    ctx.restore();
+  }
+
+  // Floor Water Pool Accumulation (床に溜まる水、波紋、水面ハイライト、光の揺らぎ、水位計)
+  private drawFloorWater(
+    ctx: CanvasRenderingContext2D,
+    leftWallX: number,
+    rightWallX: number,
+    floorY: number,
+    waterHeight: number,
+    ripples: { x: number; radius: number; maxRadius: number; alpha: number }[],
+    isRunning: boolean
+  ) {
+    if (waterHeight <= 0.2) return;
+
+    ctx.save();
+    const surfaceY = floorY - waterHeight;
+    const left = leftWallX;
+    const right = rightWallX;
+    const width = right - left;
+
+    // 1. Water Body (Translucent Blue with Depth Gradient)
+    const waterGrad = ctx.createLinearGradient(0, surfaceY, 0, floorY);
+    waterGrad.addColorStop(0, 'rgba(56, 189, 248, 0.42)');    // Sky-blue 400 translucent
+    waterGrad.addColorStop(0.3, 'rgba(14, 165, 233, 0.52)');  // Azure 500
+    waterGrad.addColorStop(0.7, 'rgba(2, 132, 199, 0.64)');   // Ocean cyan 600
+    waterGrad.addColorStop(1, 'rgba(3, 105, 161, 0.76)');     // Deep blue 700 near floor
+
+    // Generate animated surface wave points
+    const waveAmp = Math.min(2.5, Math.max(0.6, waterHeight * 0.08));
+    const stepSize = 16;
+    const steps = Math.ceil(width / stepSize);
+
+    ctx.beginPath();
+    ctx.moveTo(left, floorY);
+
+    // Meniscus at left wall
+    const leftMeniscus = Math.min(4, Math.max(1, waterHeight * 0.2));
+    ctx.lineTo(left, surfaceY - leftMeniscus);
+
+    for (let i = 0; i <= steps; i++) {
+      const x = Math.min(right, left + i * stepSize);
+      // Gentle dual sine wave for water surface
+      const waveOffset = isRunning
+        ? Math.sin(x * 0.018 + this.animTime * 2.8) * waveAmp + Math.sin(x * 0.045 - this.animTime * 1.5) * (waveAmp * 0.4)
+        : Math.sin(x * 0.018) * (waveAmp * 0.5);
+
+      // Interpolate meniscus near walls
+      let localSurface = surfaceY + waveOffset;
+      if (x < left + 30) {
+        const factor = (left + 30 - x) / 30;
+        localSurface -= leftMeniscus * factor * factor;
+      } else if (x > right - 30) {
+        const factor = (x - (right - 30)) / 30;
+        localSurface -= leftMeniscus * factor * factor;
+      }
+
+      ctx.lineTo(x, localSurface);
+    }
+
+    // Meniscus at right wall
+    ctx.lineTo(right, surfaceY - leftMeniscus);
+    ctx.lineTo(right, floorY);
+    ctx.closePath();
+
+    ctx.fillStyle = waterGrad;
+    ctx.fill();
+
+    // 2. Animated Underwater Caustic Light Bands
+    if (waterHeight > 6) {
+      ctx.save();
+      ctx.clip(); // Keep caustics inside water body
+
+      const causticCount = Math.min(10, Math.floor(width / 120));
+      for (let c = 0; c < causticCount; c++) {
+        const cx = left + ((c * 137 + (this.animTime * 18)) % width);
+        const causticGrad = ctx.createLinearGradient(cx - 30, surfaceY, cx + 30, floorY);
+        causticGrad.addColorStop(0, 'rgba(255, 255, 255, 0.16)');
+        causticGrad.addColorStop(0.5, 'rgba(186, 230, 253, 0.08)');
+        causticGrad.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+
+        ctx.fillStyle = causticGrad;
+        ctx.beginPath();
+        ctx.moveTo(cx - 8, surfaceY);
+        ctx.lineTo(cx + 18, surfaceY);
+        ctx.lineTo(cx + 38, floorY);
+        ctx.lineTo(cx - 2, floorY);
+        ctx.closePath();
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 3. Surface Specular Highlight Line (brilliant glistening waterline)
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(left, surfaceY - leftMeniscus);
+    for (let i = 0; i <= steps; i++) {
+      const x = Math.min(right, left + i * stepSize);
+      const waveOffset = isRunning
+        ? Math.sin(x * 0.018 + this.animTime * 2.8) * waveAmp + Math.sin(x * 0.045 - this.animTime * 1.5) * (waveAmp * 0.4)
+        : Math.sin(x * 0.018) * (waveAmp * 0.5);
+
+      let localSurface = surfaceY + waveOffset;
+      if (x < left + 30) {
+        const factor = (left + 30 - x) / 30;
+        localSurface -= leftMeniscus * factor * factor;
+      } else if (x > right - 30) {
+        const factor = (x - (right - 30)) / 30;
+        localSurface -= leftMeniscus * factor * factor;
+      }
+      ctx.lineTo(x, localSurface);
+    }
+    ctx.lineTo(right, surfaceY - leftMeniscus);
+
+    ctx.strokeStyle = 'rgba(224, 242, 254, 0.9)';
+    ctx.lineWidth = 1.8;
+    ctx.shadowColor = 'rgba(56, 189, 248, 0.7)';
+    ctx.shadowBlur = 6;
+    ctx.stroke();
+    ctx.restore();
+
+    // 4. Surface Impact Ripples (Expanding circles where drops fell)
+    for (const r of ripples) {
+      if (r.alpha <= 0.01) continue;
+      ctx.save();
+      // Main ripple ring
+      ctx.beginPath();
+      ctx.ellipse(r.x, surfaceY, r.radius, r.radius * 0.32, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(255, 255, 255, ${(r.alpha * 0.75).toFixed(3)})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Inner subtle ripple ring
+      if (r.radius > 6) {
+        ctx.beginPath();
+        ctx.ellipse(r.x, surfaceY, r.radius * 0.55, r.radius * 0.18, 0, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(186, 230, 253, ${(r.alpha * 0.45).toFixed(3)})`;
+        ctx.lineWidth = 1.0;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 5. Engraved Depth Gauge on Left Wall
+    this.drawDepthGauge(ctx, left, surfaceY, floorY, waterHeight);
+
+    ctx.restore();
+  }
+
+  // Depth Gauge Ruler (左壁に刻まれた水位スケール目盛り)
+  private drawDepthGauge(
+    ctx: CanvasRenderingContext2D,
+    wallX: number,
+    surfaceY: number,
+    floorY: number,
+    waterHeight: number
+  ) {
+    const gaugeX = wallX + 6;
+    const maxHeight = Math.min(floorY - 50, floorY - surfaceY + 24);
+
+    ctx.save();
+    // Subtle translucent dark backplate
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+    ctx.fillRect(gaugeX - 2, floorY - maxHeight, 40, maxHeight + 2);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(gaugeX, floorY);
+    ctx.lineTo(gaugeX, floorY - maxHeight);
+    ctx.stroke();
+
+    // Tick marks every 20px
+    ctx.fillStyle = 'rgba(224, 242, 254, 0.85)';
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+
+    for (let h = 20; h <= maxHeight; h += 20) {
+      const y = floorY - h;
+      ctx.beginPath();
+      ctx.moveTo(gaugeX, y);
+      ctx.lineTo(gaugeX + (h % 40 === 0 ? 8 : 4), y);
+      ctx.stroke();
+
+      if (h % 40 === 0) {
+        ctx.fillText(`${h}mm`, gaugeX + 11, y);
+      }
+    }
+
+    // Current Water Level Indicator Triangle
+    ctx.fillStyle = '#38bdf8';
+    ctx.beginPath();
+    ctx.moveTo(gaugeX - 3, surfaceY);
+    ctx.lineTo(gaugeX + 4, surfaceY - 4);
+    ctx.lineTo(gaugeX + 4, surfaceY + 4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Water level text
+    ctx.font = 'bold 10px monospace';
+    ctx.fillText(`${Math.round(waterHeight)}mm`, gaugeX + 8, surfaceY - 8);
 
     ctx.restore();
   }
