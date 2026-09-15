@@ -5,7 +5,7 @@ import {
   CircleDot,
   Flag,
   Minus,
-  BookOpen,
+  BrickWall,
   Layers,
   Zap,
   Scale,
@@ -71,11 +71,11 @@ const PALETTE_ITEMS: PaletteItem[] = [
     icon: <Pipette className="w-5 h-5 text-amber-600 rotate-45" />
   },
   {
-    type: 'book',
-    label: '本',
+    type: 'brick',
+    label: 'レンガ',
     category: 'ramp',
-    description: '立てて倒す、寝かせて坂道',
-    icon: <BookOpen className="w-5 h-5 text-blue-400" />
+    description: '重みのある頑丈な赤レンガ',
+    icon: <BrickWall className="w-5 h-5 text-rose-500" />
   },
 
   // Chain Reactions & Interactive Gimmicks

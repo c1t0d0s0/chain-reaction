@@ -22,6 +22,7 @@ interface PhysicsCanvasProps {
   transform: ViewportTransform;
   onTransformChange: (t: ViewportTransform) => void;
   followMarble: boolean;
+  onCanvasResize?: (size: { width: number; height: number }) => void;
 }
 
 export const PhysicsCanvas: React.FC<PhysicsCanvasProps> = ({
@@ -38,6 +39,7 @@ export const PhysicsCanvas: React.FC<PhysicsCanvasProps> = ({
   transform,
   onTransformChange,
   followMarble,
+  onCanvasResize,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<CanvasRenderer>(new CanvasRenderer());
@@ -161,10 +163,9 @@ export const PhysicsCanvas: React.FC<PhysicsCanvasProps> = ({
         canvas.width = width;
         canvas.height = height;
         setCanvasSize({ width, height });
-
-        // Position the floor right at the bottom of the screen with a 36px visible floor strip
-        const targetFloorY = Math.max(height - 36, 560);
-        physics.setFloor(targetFloorY);
+        if (onCanvasResize) {
+          onCanvasResize({ width, height });
+        }
       }
     };
 
@@ -394,8 +395,11 @@ export const PhysicsCanvas: React.FC<PhysicsCanvasProps> = ({
       }
     } else {
       draggedGadgetIdRef.current = null;
-      // Clicked on empty space: deselect
+      // Clicked on empty space: deselect active gadget
       onSelectGadget(null);
+      // Pan canvas by dragging on empty background
+      isPanningRef.current = true;
+      panStartRef.current = { x: screenPos.x, y: screenPos.y, tx: transform.x, ty: transform.y };
     }
   };
 
@@ -858,7 +862,10 @@ export const PhysicsCanvas: React.FC<PhysicsCanvasProps> = ({
       const needsRecreate =
         oldGadget?.options?.width !== updated.options?.width ||
         oldGadget?.options?.height !== updated.options?.height ||
-        oldGadget?.options?.radius !== updated.options?.radius;
+        oldGadget?.options?.radius !== updated.options?.radius ||
+        oldGadget?.options?.spokes !== updated.options?.spokes ||
+        oldGadget?.options?.span !== updated.options?.span ||
+        oldGadget?.options?.waterAmount !== updated.options?.waterAmount;
 
       if (needsRecreate) {
         physics.removeGadget(updated.id);

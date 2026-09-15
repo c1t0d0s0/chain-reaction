@@ -8,6 +8,7 @@ import { GadgetPalette } from './components/GadgetPalette';
 import { PhysicsCanvas } from './components/PhysicsCanvas';
 import { GoalModal } from './components/GoalModal';
 import { HelpModal } from './components/HelpModal';
+import { getOptimalViewport, zoomCentered } from './utils/viewport';
 
 export const App: React.FC = () => {
   const physics = useMemo(() => new PhysicsEngine(), []);
@@ -26,11 +27,32 @@ export const App: React.FC = () => {
   const [isGoalReached, setIsGoalReached] = useState<boolean>(false);
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false);
 
-  const [transform, setTransform] = useState<ViewportTransform>({
-    x: 40,
-    y: 40,
-    scale: 1.0,
+  const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({
+    width: typeof window !== 'undefined' ? window.innerWidth - 80 : 1200,
+    height: typeof window !== 'undefined' ? window.innerHeight - 100 : 800,
   });
+
+  const [hasInitializedViewport, setHasInitializedViewport] = useState<boolean>(false);
+
+  const [transform, setTransform] = useState<ViewportTransform>(() => {
+    const initW = typeof window !== 'undefined' ? window.innerWidth - 80 : 1200;
+    const initH = typeof window !== 'undefined' ? window.innerHeight - 100 : 800;
+    return getOptimalViewport(DEFAULT_COURSES[0].gadgets, initW, initH);
+  });
+
+  const handleCanvasResize = (size: { width: number; height: number }) => {
+    setCanvasSize(size);
+    if (!hasInitializedViewport && size.width > 0 && size.height > 0) {
+      setHasInitializedViewport(true);
+      const optimal = getOptimalViewport(
+        currentCourse.gadgets || [],
+        size.width,
+        size.height,
+        currentCourse.viewport
+      );
+      setTransform(optimal);
+    }
+  };
 
   // Selected Gadget Data for Inspector
   const selectedGadget = useMemo(() => {
@@ -145,7 +167,13 @@ export const App: React.FC = () => {
     setSelectedGadgetId(null);
     setSelectedTool(null);
     setIsGoalReached(false);
-    setTransform({ x: 40, y: 40, scale: 1.0 });
+    const optimal = getOptimalViewport(
+      course.gadgets || [],
+      canvasSize.width,
+      canvasSize.height,
+      course.viewport
+    );
+    setTransform(optimal);
   };
 
   // Create New Empty Course
@@ -184,15 +212,16 @@ export const App: React.FC = () => {
     setSelectedGadgetId(null);
     setSelectedTool(null);
     setIsGoalReached(false);
-    setTransform({ x: 40, y: 40, scale: 1.0 });
+    setTransform(getOptimalViewport(emptyCourse.gadgets, canvasSize.width, canvasSize.height));
   };
 
-  // Export Course JSON
+  // Export Course JSON (includes current camera viewport)
   const handleExportCourse = () => {
     const snapshot = physics.getSnapshot();
     const exportData: CourseData = {
       ...currentCourse,
       gadgets: snapshot,
+      viewport: transform,
     };
     const blob = new Blob([JSON.stringify(exportData, null, 2)], {
       type: 'application/json',
@@ -205,12 +234,18 @@ export const App: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
-  // Import Course JSON
+  // Import Course JSON (guarantees all objects, especially top-most ones, are fully visible)
   const handleImportCourse = (course: CourseData) => {
     setCurrentCourse(course);
     setSelectedGadgetId(null);
     setIsGoalReached(false);
-    setTransform({ x: 40, y: 40, scale: 1.0 });
+    const optimal = getOptimalViewport(
+      course.gadgets || [],
+      canvasSize.width,
+      canvasSize.height,
+      course.viewport
+    );
+    setTransform(optimal);
   };
 
   // Gadget Lifecycle
@@ -287,12 +322,29 @@ export const App: React.FC = () => {
         continuousPlacement={continuousPlacement}
         onToggleContinuousPlacement={() => setContinuousPlacement(!continuousPlacement)}
         onZoomIn={() =>
-          setTransform((t) => ({ ...t, scale: Math.min(t.scale * 1.15, 3.0) }))
+          setTransform((t) =>
+            zoomCentered(t, 1.15, {
+              x: canvasSize.width / 2,
+              y: canvasSize.height / 2,
+            })
+          )
         }
         onZoomOut={() =>
-          setTransform((t) => ({ ...t, scale: Math.max(t.scale * 0.85, 0.35) }))
+          setTransform((t) =>
+            zoomCentered(t, 0.85, {
+              x: canvasSize.width / 2,
+              y: canvasSize.height / 2,
+            })
+          )
         }
-        onResetView={() => setTransform({ x: 40, y: 40, scale: 1.0 })}
+        onResetView={() => {
+          const optimal = getOptimalViewport(
+            physics.getSnapshot(),
+            canvasSize.width,
+            canvasSize.height
+          );
+          setTransform(optimal);
+        }}
         followMarble={followMarble}
         onToggleFollowMarble={() => setFollowMarble(!followMarble)}
       />
@@ -321,6 +373,7 @@ export const App: React.FC = () => {
           transform={transform}
           onTransformChange={setTransform}
           followMarble={followMarble}
+          onCanvasResize={handleCanvasResize}
         />
       </div>
 

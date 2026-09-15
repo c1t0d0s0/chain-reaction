@@ -31,8 +31,8 @@ export class CanvasRenderer {
       this.drawGrid(ctx, width, height, transform);
     }
 
-    // Draw Floor (画面下部の床)
-    this.drawFloor(ctx, physics.floorY, width, height, transform);
+    // Draw Room Boundaries (左右の壁と床)
+    this.drawRoomBoundaries(ctx, physics.leftWallX, physics.rightWallX, physics.floorY, width, height, transform);
 
     // Render all physical gadget bundles
     const bundles = Array.from(physics.bundles.values());
@@ -55,8 +55,9 @@ export class CanvasRenderer {
         case 'plank':
           this.drawPlank(ctx, bundle.mainBody);
           break;
+        case 'brick':
         case 'book':
-          this.drawBook(ctx, bundle.mainBody);
+          this.drawBrick(ctx, bundle.mainBody);
           break;
         case 'domino':
           this.drawDomino(ctx, bundle.mainBody);
@@ -174,9 +175,11 @@ export class CanvasRenderer {
     ctx.stroke();
   }
 
-  // Environmental Floor (画面下部の床 - 木製フローリング/作業台)
-  private drawFloor(
+  // Environmental Room Boundaries (画面の床・左右の木製壁柱)
+  private drawRoomBoundaries(
     ctx: CanvasRenderingContext2D,
+    leftWallX: number,
+    rightWallX: number,
     floorY: number,
     width: number,
     height: number,
@@ -184,12 +187,15 @@ export class CanvasRenderer {
   ) {
     const visibleLeft = -transform.x / transform.scale - 200;
     const visibleRight = (-transform.x + width) / transform.scale + 200;
+    const visibleTop = -transform.y / transform.scale - 200;
     const visibleBottom = Math.max(floorY + 800, (-transform.y + height) / transform.scale + 200);
     const floorTotalHeight = visibleBottom - floorY;
 
     ctx.save();
 
-    // 1. Base Flooring Gradient (Warm Oak Wood)
+    // ==========================================
+    // 1. FLOOR (フローリング床)
+    // ==========================================
     const floorGrad = ctx.createLinearGradient(0, floorY, 0, floorY + 80);
     floorGrad.addColorStop(0, '#78350f');    // Rich oak amber
     floorGrad.addColorStop(0.15, '#92400e'); // Warm wood body
@@ -205,12 +211,12 @@ export class CanvasRenderer {
       ctx.fillRect(visibleLeft, floorY + 80, visibleRight - visibleLeft, floorTotalHeight - 80);
     }
 
-    // 2. Skirting Board / Top Trim Bar (巾木・トップエッジ)
+    // Skirting Board / Top Trim Bar (床の巾木・トップエッジ)
     const trimHeight = 6;
     ctx.fillStyle = '#b45309';
     ctx.fillRect(visibleLeft, floorY, visibleRight - visibleLeft, trimHeight);
 
-    // Bevel highlight line on the very top edge of the floor
+    // Bevel highlight line on the top surface of the floor
     ctx.strokeStyle = '#fde68a'; // Amber 200 crisp highlight
     ctx.lineWidth = 1.5;
     ctx.beginPath();
@@ -226,10 +232,9 @@ export class CanvasRenderer {
     ctx.lineTo(visibleRight, floorY + trimHeight);
     ctx.stroke();
 
-    // 3. Wooden Parquet / Flooring Plank Seams (フローリングの目地)
+    // Wooden Parquet Plank Seams (フローリング目地)
     const plankWidth = 140;
     const startX = Math.floor(visibleLeft / plankWidth) * plankWidth;
-
     ctx.strokeStyle = 'rgba(67, 20, 7, 0.45)';
     ctx.lineWidth = 1.2;
     ctx.beginPath();
@@ -239,13 +244,13 @@ export class CanvasRenderer {
     }
     ctx.stroke();
 
-    // Subtle alternating plank tone highlights
+    // Alternating plank tone highlights
     ctx.fillStyle = 'rgba(255, 255, 255, 0.025)';
     for (let x = startX; x <= visibleRight; x += plankWidth * 2) {
       ctx.fillRect(x, floorY + trimHeight, plankWidth, 80 - trimHeight);
     }
 
-    // 4. Subtle horizontal wood grain lines
+    // Subtle horizontal wood grain lines on floor
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -255,13 +260,109 @@ export class CanvasRenderer {
     ctx.lineTo(visibleRight, floorY + 52);
     ctx.stroke();
 
-    // 5. Contact line / shadow just below top surface
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+    // ==========================================
+    // 2. LEFT WALL (左側の木製柱・壁)
+    // ==========================================
+    const wallPillarWidth = 24;
+
+    // Dark exterior backdrop to the left of the left wall
+    if (visibleLeft < leftWallX - wallPillarWidth) {
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(visibleLeft, visibleTop, (leftWallX - wallPillarWidth) - visibleLeft, (floorY - visibleTop) + 80);
+    }
+
+    // Left Wall Pillar
+    const leftPillarGrad = ctx.createLinearGradient(leftWallX - wallPillarWidth, 0, leftWallX, 0);
+    leftPillarGrad.addColorStop(0, '#5c2807');    // Shadow corner
+    leftPillarGrad.addColorStop(0.5, '#78350f');  // Cedar wood
+    leftPillarGrad.addColorStop(0.85, '#92400e'); // Front face
+    leftPillarGrad.addColorStop(1, '#b45309');    // Front trim edge
+
+    ctx.fillStyle = leftPillarGrad;
+    ctx.fillRect(leftWallX - wallPillarWidth, visibleTop, wallPillarWidth, (floorY - visibleTop) + 6);
+
+    // Left wall vertical wood grain grooves
+    ctx.strokeStyle = 'rgba(67, 20, 7, 0.5)';
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(visibleLeft, floorY + 80);
-    ctx.lineTo(visibleRight, floorY + 80);
+    ctx.moveTo(leftWallX - 16, visibleTop);
+    ctx.lineTo(leftWallX - 16, floorY);
+    ctx.moveTo(leftWallX - 8, visibleTop);
+    ctx.lineTo(leftWallX - 8, floorY);
     ctx.stroke();
+
+    // Left wall inner edge bevel highlight (inner boundary face)
+    ctx.strokeStyle = '#fde68a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(leftWallX - 0.75, visibleTop);
+    ctx.lineTo(leftWallX - 0.75, floorY + 6);
+    ctx.stroke();
+
+    // Left wall drop shadow cast into the room
+    const leftShadowGrad = ctx.createLinearGradient(leftWallX, 0, leftWallX + 16, 0);
+    leftShadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0.22)');
+    leftShadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = leftShadowGrad;
+    ctx.fillRect(leftWallX, visibleTop, 16, floorY - visibleTop);
+
+    // Left wall baseboard block / plinth at floor joint
+    ctx.fillStyle = '#92400e';
+    ctx.fillRect(leftWallX - wallPillarWidth - 4, floorY - 14, wallPillarWidth + 8, 20);
+    ctx.strokeStyle = '#fde68a';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(leftWallX - wallPillarWidth - 4, floorY - 14, wallPillarWidth + 8, 20);
+
+    // ==========================================
+    // 3. RIGHT WALL (右側の木製柱・壁)
+    // ==========================================
+    // Dark exterior backdrop to the right of the right wall
+    if (visibleRight > rightWallX + wallPillarWidth) {
+      ctx.fillStyle = '#18181b';
+      ctx.fillRect(rightWallX + wallPillarWidth, visibleTop, visibleRight - (rightWallX + wallPillarWidth), (floorY - visibleTop) + 80);
+    }
+
+    // Right Wall Pillar
+    const rightPillarGrad = ctx.createLinearGradient(rightWallX, 0, rightWallX + wallPillarWidth, 0);
+    rightPillarGrad.addColorStop(0, '#b45309');    // Front trim edge
+    rightPillarGrad.addColorStop(0.15, '#92400e'); // Front face
+    rightPillarGrad.addColorStop(0.5, '#78350f');  // Cedar wood
+    rightPillarGrad.addColorStop(1, '#5c2807');    // Shadow corner
+
+    ctx.fillStyle = rightPillarGrad;
+    ctx.fillRect(rightWallX, visibleTop, wallPillarWidth, (floorY - visibleTop) + 6);
+
+    // Right wall vertical wood grain grooves
+    ctx.strokeStyle = 'rgba(67, 20, 7, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(rightWallX + 8, visibleTop);
+    ctx.lineTo(rightWallX + 8, floorY);
+    ctx.moveTo(rightWallX + 16, visibleTop);
+    ctx.lineTo(rightWallX + 16, floorY);
+    ctx.stroke();
+
+    // Right wall inner edge bevel highlight (inner boundary face)
+    ctx.strokeStyle = '#fde68a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(rightWallX + 0.75, visibleTop);
+    ctx.lineTo(rightWallX + 0.75, floorY + 6);
+    ctx.stroke();
+
+    // Right wall drop shadow cast into the room
+    const rightShadowGrad = ctx.createLinearGradient(rightWallX - 16, 0, rightWallX, 0);
+    rightShadowGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    rightShadowGrad.addColorStop(1, 'rgba(0, 0, 0, 0.22)');
+    ctx.fillStyle = rightShadowGrad;
+    ctx.fillRect(rightWallX - 16, visibleTop, 16, floorY - visibleTop);
+
+    // Right wall baseboard block / plinth at floor joint
+    ctx.fillStyle = '#92400e';
+    ctx.fillRect(rightWallX - 4, floorY - 14, wallPillarWidth + 8, 20);
+    ctx.strokeStyle = '#fde68a';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(rightWallX - 4, floorY - 14, wallPillarWidth + 8, 20);
 
     ctx.restore();
   }
@@ -362,36 +463,115 @@ export class CanvasRenderer {
     ctx.restore();
   }
 
-  // Book (本)
-  private drawBook(ctx: CanvasRenderingContext2D, body: Matter.Body) {
+  // Brick (レンガ - baked red terracotta clay brick with core indentations)
+  private drawBrick(ctx: CanvasRenderingContext2D, body: Matter.Body) {
     const { x, y } = body.position;
     const gadget = body.plugin?.gadget as GadgetData | undefined;
-    const w = gadget?.options?.width || 32;
-    const h = gadget?.options?.height || 90;
+    const w = gadget?.options?.width || 72;
+    const h = gadget?.options?.height || 36;
 
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(body.angle);
 
-    // Book cover
-    ctx.fillStyle = '#1e3a8a'; // Deep Navy Book
+    // 1. Soft contact shadow underneath
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
     ctx.beginPath();
-    ctx.roundRect(-w / 2, -h / 2, w, h, 3);
+    ctx.roundRect(-w / 2 + 1, -h / 2 + 2, w, h, 2);
     ctx.fill();
 
-    // White paper pages block inside
-    ctx.fillStyle = '#fef08a';
-    ctx.fillRect(-w / 2 + 4, -h / 2 + 3, w - 8, h - 6);
+    // 2. Brick Main Clay Body (Warm Terracotta / Baked Red Clay gradient)
+    const brickGrad = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+    brickGrad.addColorStop(0, '#b91c1c');    // Rich terracotta red (red-700)
+    brickGrad.addColorStop(0.3, '#dc2626');  // Warm baked face (red-600)
+    brickGrad.addColorStop(0.7, '#991b1b');  // Deep clay (red-800)
+    brickGrad.addColorStop(1, '#7f1d1d');    // Shadow foundation (red-900)
 
-    // Book spine strip
-    ctx.fillStyle = '#dc2626'; // Red spine
-    ctx.fillRect(-w / 2, -h / 2, 6, h);
+    ctx.fillStyle = brickGrad;
+    ctx.beginPath();
+    ctx.roundRect(-w / 2, -h / 2, w, h, 2.5);
+    ctx.fill();
 
-    // Gold title embossing
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = 'bold 9px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('BOOK', 2, 3);
+    // 3. Beveled highlights and shadows on edges (3D crisp masonry feel)
+    // Top highlight (specular reflection on upper edge)
+    ctx.strokeStyle = 'rgba(254, 202, 202, 0.5)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2 + 2, -h / 2 + 1);
+    ctx.lineTo(w / 2 - 2, -h / 2 + 1);
+    ctx.stroke();
+
+    // Left edge soft highlight
+    ctx.strokeStyle = 'rgba(254, 202, 202, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2 + 1, -h / 2 + 2);
+    ctx.lineTo(-w / 2 + 1, h / 2 - 2);
+    ctx.stroke();
+
+    // Bottom edge shadow
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-w / 2 + 2, h / 2 - 1);
+    ctx.lineTo(w / 2 - 2, h / 2 - 1);
+    ctx.stroke();
+
+    // 4. Characteristic Brick Core Indentations / Holes (3つ穴レンガの意匠)
+    const isHorizontal = w >= h;
+    const holeRadius = Math.min(w, h) * 0.18;
+
+    if (holeRadius >= 2.5) {
+      const holePositions = isHorizontal
+        ? [
+            { x: -w * 0.28, y: 0 },
+            { x: 0, y: 0 },
+            { x: w * 0.28, y: 0 }
+          ]
+        : [
+            { x: 0, y: -h * 0.28 },
+            { x: 0, y: 0 },
+            { x: 0, y: h * 0.28 }
+          ];
+
+      for (const pos of holePositions) {
+        // Outer recess rim shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, holeRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Inner dark hole depth
+        ctx.fillStyle = '#450a0a'; // Deep burnt maroon
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y + 0.5, holeRadius * 0.8, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Lower rim highlight
+        ctx.strokeStyle = 'rgba(254, 202, 202, 0.3)';
+        ctx.lineWidth = 0.8;
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, holeRadius, 0.2 * Math.PI, 0.8 * Math.PI);
+        ctx.stroke();
+      }
+    }
+
+    // 5. Subtle terracotta clay fleck texture
+    if (w >= 30 && h >= 20) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.fillRect(-w * 0.35, -h * 0.25, 2, 1.5);
+      ctx.fillRect(w * 0.2, h * 0.2, 2.5, 1.5);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+      ctx.fillRect(-w * 0.15, h * 0.22, 2, 1.5);
+      ctx.fillRect(w * 0.32, -h * 0.2, 1.5, 1.5);
+    }
+
+    // Outer brick border
+    ctx.strokeStyle = '#7f1d1d';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.roundRect(-w / 2, -h / 2, w, h, 2.5);
+    ctx.stroke();
 
     ctx.restore();
   }
@@ -518,35 +698,218 @@ export class CanvasRenderer {
     }
   }
 
-  // Paper Cup (紙コップ)
+  // Paper Cup (紙コップ - realistic water fill, meniscus, and overflow effects)
   private drawPaperCup(ctx: CanvasRenderingContext2D, body: Matter.Body) {
     const { x, y } = body.position;
     const gadget = body.plugin?.gadget as GadgetData | undefined;
     const w = gadget?.options?.width || 56;
     const h = gadget?.options?.height || 64;
+    const rawWater = body.plugin?.waterLevel ?? gadget?.options?.waterAmount ?? 0;
+    const waterLevel = Math.max(0, Math.min(1, rawWater));
+    const isOverflowing = Boolean(body.plugin?.isOverflowing);
 
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(body.angle);
 
-    // Cup outline and fill (white/cream paper texture)
-    ctx.fillStyle = '#fdfbf7';
+    // Geometry of paper cup:
+    // Top rim: y = -h / 2, width = w - 10 (-w/2 + 5 to w/2 - 5)
+    // Bottom: y = h / 2, width = w - 24 (-w/2 + 12 to w/2 - 12)
+    const topW = w - 10;
+    const botW = w - 24;
+    const topY = -h / 2;
+    const botY = h / 2;
+
+    // 1. Soft contact shadow underneath
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
     ctx.beginPath();
-    ctx.moveTo(-w / 2 + 5, -h / 2); // top left rim
-    ctx.lineTo(w / 2 - 5, -h / 2);  // top right rim
-    ctx.lineTo(w / 2 - 12, h / 2);  // bottom right
-    ctx.lineTo(-w / 2 + 12, h / 2); // bottom left
+    ctx.ellipse(0, botY + 2, botW / 2 + 4, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Inner back cavity of cup (visible from top or through translucency)
+    const backGrad = ctx.createLinearGradient(0, topY, 0, botY);
+    backGrad.addColorStop(0, '#e7e2d8');
+    backGrad.addColorStop(0.3, '#ded8cc');
+    backGrad.addColorStop(1, '#cdc6b8');
+
+    ctx.fillStyle = backGrad;
+    ctx.beginPath();
+    ctx.moveTo(-topW / 2 + 1, topY + 2);
+    ctx.lineTo(topW / 2 - 1, topY + 2);
+    ctx.lineTo(botW / 2 - 2, botY - 3);
+    ctx.lineTo(-botW / 2 + 2, botY - 3);
     ctx.closePath();
     ctx.fill();
 
-    // Red striped decorative band
-    ctx.fillStyle = '#ef4444';
-    ctx.fillRect(-w / 2 + 7, -h / 4, w - 14, 8);
+    // 3. Water liquid inside cup
+    if (waterLevel > 0.005) {
+      // Liquid height: fills from bottom (botY - 4) upward towards (topY + 3)
+      const maxWaterH = h - 9;
+      const liquidH = maxWaterH * waterLevel;
+      const surfaceY = (botY - 4) - liquidH;
 
-    // Rim border
-    ctx.strokeStyle = '#d6d3d1';
-    ctx.lineWidth = 1.5;
+      // Cup tapers linearly: calculate width at surfaceY
+      const tSurface = Math.max(0, Math.min(1, (surfaceY - topY) / h));
+      const surfaceW = topW * (1 - tSurface) + botW * tSurface - 4;
+      const bottomWaterW = botW - 4;
+
+      // Water body gradient (crystal-clear sky blue to deep water blue)
+      const waterGrad = ctx.createLinearGradient(0, surfaceY, 0, botY - 4);
+      waterGrad.addColorStop(0, 'rgba(56, 189, 248, 0.88)');   // sky-400
+      waterGrad.addColorStop(0.5, 'rgba(14, 165, 233, 0.92)'); // sky-500
+      waterGrad.addColorStop(1, 'rgba(2, 132, 199, 0.96)');    // sky-600
+
+      ctx.save();
+      ctx.fillStyle = waterGrad;
+      ctx.beginPath();
+      ctx.moveTo(-surfaceW / 2, surfaceY);
+      ctx.lineTo(surfaceW / 2, surfaceY);
+      ctx.lineTo(bottomWaterW / 2, botY - 4);
+      ctx.lineTo(-bottomWaterW / 2, botY - 4);
+      ctx.closePath();
+      ctx.fill();
+
+      // Liquid surface meniscus (water surface line with slight curve & specular glint)
+      ctx.strokeStyle = '#e0f2fe';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.ellipse(0, surfaceY, surfaceW / 2, Math.min(3, surfaceW * 0.08), 0, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.fill();
+
+      // Specular glint highlight on water surface
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(-surfaceW * 0.22, surfaceY, 1.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Rising tiny bubbles if water is present
+      if (waterLevel > 0.3) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.beginPath();
+        ctx.arc(-surfaceW * 0.15, surfaceY + liquidH * 0.45, 1.2, 0, Math.PI * 2);
+        ctx.arc(surfaceW * 0.2, surfaceY + liquidH * 0.7, 1.0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // 4. Outer Paper Shell
+    // When cup contains water, the wet/filled portion has subtle translucency
+    // allowing the blue water to gently show through the white paper
+    const paperGrad = ctx.createLinearGradient(-topW / 2, 0, topW / 2, 0);
+    if (waterLevel > 0.05) {
+      paperGrad.addColorStop(0, 'rgba(254, 252, 248, 0.88)');
+      paperGrad.addColorStop(0.3, 'rgba(255, 255, 255, 0.82)');
+      paperGrad.addColorStop(0.7, 'rgba(248, 246, 240, 0.85)');
+      paperGrad.addColorStop(1, 'rgba(241, 238, 230, 0.90)');
+    } else {
+      paperGrad.addColorStop(0, '#fdfbf7');
+      paperGrad.addColorStop(0.3, '#ffffff');
+      paperGrad.addColorStop(0.7, '#fbf9f4');
+      paperGrad.addColorStop(1, '#f3efe6');
+    }
+
+    ctx.fillStyle = paperGrad;
+    ctx.beginPath();
+    ctx.moveTo(-topW / 2, topY);
+    ctx.lineTo(topW / 2, topY);
+    ctx.lineTo(botW / 2, botY);
+    ctx.lineTo(-botW / 2, botY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Subtle edge shading for 3D cylindrical paper cup volume
+    const shadeGrad = ctx.createLinearGradient(-topW / 2, 0, topW / 2, 0);
+    shadeGrad.addColorStop(0, 'rgba(0, 0, 0, 0.08)');
+    shadeGrad.addColorStop(0.15, 'rgba(0, 0, 0, 0)');
+    shadeGrad.addColorStop(0.85, 'rgba(0, 0, 0, 0)');
+    shadeGrad.addColorStop(1, 'rgba(0, 0, 0, 0.12)');
+    ctx.fillStyle = shadeGrad;
+    ctx.beginPath();
+    ctx.moveTo(-topW / 2, topY);
+    ctx.lineTo(topW / 2, topY);
+    ctx.lineTo(botW / 2, botY);
+    ctx.lineTo(-botW / 2, botY);
+    ctx.closePath();
+    ctx.fill();
+
+    // 5. Classic Red Decorative Stripe Band (iconic Japanese paper cup design)
+    const bandY = -h / 4;
+    const bandH = 8;
+    const tBand = (bandY - topY) / h;
+    const bandW = topW * (1 - tBand) + botW * tBand;
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.roundRect(-bandW / 2 + 2, bandY, bandW - 4, bandH, 1);
+    ctx.fill();
+
+    // Thin white accent line inside red band
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-bandW / 2 + 4, bandY + bandH / 2);
+    ctx.lineTo(bandW / 2 - 4, bandY + bandH / 2);
     ctx.stroke();
+
+    // 6. Folded Bottom Base Rim
+    ctx.strokeStyle = '#d6d3d1';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-botW / 2 + 1, botY - 3);
+    ctx.lineTo(botW / 2 - 1, botY - 3);
+    ctx.stroke();
+
+    // Cup outline border
+    ctx.strokeStyle = '#d6d3d1';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(-topW / 2, topY);
+    ctx.lineTo(-botW / 2, botY);
+    ctx.lineTo(botW / 2, botY);
+    ctx.lineTo(topW / 2, topY);
+    ctx.stroke();
+
+    // 7. Top Rolled Paper Lip (丸いフチの立体感)
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#cbd5e1';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.ellipse(0, topY, topW / 2 + 1.5, 3.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Inner rim hole opening
+    ctx.fillStyle = waterLevel >= 0.95 ? 'rgba(56, 189, 248, 0.85)' : '#eae5db';
+    ctx.beginPath();
+    ctx.ellipse(0, topY, topW / 2 - 2, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 8. Overflow Visual Effect (あふれ出る水のエフェクト)
+    if (isOverflowing || waterLevel >= 0.98) {
+      // Shimmering spill crest over the rim
+      ctx.fillStyle = 'rgba(125, 211, 252, 0.95)'; // sky-300
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+
+      // Spilling droplet/sheen on left or right rim depending on tilt
+      const spillSide = body.angle > 0.05 ? 1 : body.angle < -0.05 ? -1 : (Date.now() % 400 > 200 ? 1 : -1);
+      const spillRimX = spillSide * (topW / 2);
+
+      // Droplet bead spilling over
+      ctx.beginPath();
+      ctx.ellipse(spillRimX, topY + 2, 3.5, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Sparkle glint
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(spillRimX + (spillSide > 0 ? 1 : -1), topY + 2, 1.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore();
   }

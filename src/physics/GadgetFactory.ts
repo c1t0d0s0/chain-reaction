@@ -108,29 +108,32 @@ export class GadgetFactory {
     };
   }
 
-  // Book (本)
-  public static createBook(data: GadgetData): GadgetBodyBundle {
-    const w = data.options?.width || 28;
-    const h = data.options?.height || 85;
+  // Brick (レンガ - heavy ceramic terracotta block)
+  public static createBrick(data: GadgetData): GadgetBodyBundle {
+    const w = data.options?.width || 72;
+    const h = data.options?.height || 36;
 
-    // Heavy hardcover book: solid weight, crisp tip-over response, minimal bounce
-    const book = Bodies.rectangle(data.x, data.y, w, h, {
+    const density = data.options?.density || 0.012;
+    const friction = data.options?.friction || 0.85;
+
+    // Heavy red brick: solid weight, strong friction, minimal bounce
+    const brick = Bodies.rectangle(data.x, data.y, w, h, {
       isStatic: data.options?.isStatic ?? false,
-      friction: 0.45,
-      frictionStatic: 0.7,
+      friction: friction,
+      frictionStatic: 1.5,
       restitution: 0.08,
-      density: 0.0035,
+      density: density,
       angle: data.angle,
-      label: 'book'
+      label: 'brick'
     });
-    book.plugin = { gadgetId: data.id, gadget: data };
+    brick.plugin = { gadgetId: data.id, gadget: data };
 
     return {
       gadgetId: data.id,
-      type: 'book',
-      bodies: [book],
+      type: 'brick',
+      bodies: [brick],
       constraints: [],
-      mainBody: book
+      mainBody: brick
     };
   }
 
@@ -189,10 +192,10 @@ export class GadgetFactory {
     const plankW = data.options?.width || 220;
     const plankH = 14;
 
-    // Balanced seesaw board: responds smoothly to marble weight without endless fluttering
+    // Balanced seesaw board: responds smoothly to marble weight with high-grip wooden surface
     const plank = Bodies.rectangle(data.x, data.y, plankW, plankH, {
-      friction: 0.15,
-      frictionStatic: 0.3,
+      friction: 0.8,
+      frictionStatic: 1.5,
       restitution: 0.08,
       density: 0.005,
       angle: data.angle,
@@ -262,7 +265,16 @@ export class GadgetFactory {
       label: 'paper_cup'
     });
     Body.setAngle(cup, data.angle);
-    cup.plugin = { gadgetId: data.id, gadget: data };
+    const initialWater = data.options?.waterAmount ?? 0;
+    cup.plugin = {
+      gadgetId: data.id,
+      gadget: data,
+      waterLevel: initialWater,
+      baseMass: cup.mass
+    };
+    if (initialWater > 0) {
+      Body.setMass(cup, cup.mass + initialWater * 3.5);
+    }
     bottom.plugin = cup.plugin;
     leftWall.plugin = cup.plugin;
     rightWall.plugin = cup.plugin;
@@ -708,8 +720,9 @@ export class GadgetFactory {
         return this.createGoal(data);
       case 'plank':
         return this.createPlank(data);
+      case 'brick':
       case 'book':
-        return this.createBook(data);
+        return this.createBrick(data);
       case 'domino':
         return this.createDomino(data);
       case 'spring':

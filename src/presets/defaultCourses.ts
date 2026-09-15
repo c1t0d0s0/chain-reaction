@@ -57,14 +57,14 @@ export const DEFAULT_COURSES: CourseData[] = [
       { id: 'dom-4', type: 'domino', x: 438, y: 310, angle: 0 },
       { id: 'dom-5', type: 'domino', x: 464, y: 310, angle: 0 },
       { id: 'dom-6', type: 'domino', x: 490, y: 310, angle: 0 },
-      // Upright Book
+      // Standing Brick
       {
-        id: 'book-1',
-        type: 'book',
+        id: 'brick-1',
+        type: 'brick',
         x: 520,
         y: 300,
         angle: 0,
-        options: { width: 14, height: 65 }
+        options: { width: 18, height: 65 }
       },
       // Seesaw below the book
       {

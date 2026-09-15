@@ -3,7 +3,8 @@ export type GadgetType =
   | 'start_gate'
   | 'goal'
   | 'plank'
-  | 'book'
+  | 'brick'
+  | 'book' // legacy alias for saved courses
   | 'domino'
   | 'spring'
   | 'seesaw'
@@ -39,6 +40,7 @@ export interface GadgetOptions {
   span?: number; // for pulley rope span
   flowRate?: number; // for faucet water stream rate
   autoFlow?: boolean; // for faucet start immediately vs triggered
+  waterAmount?: number; // 0.0 to 1.0 initial water fill level for paper cup
 }
 
 export interface GadgetData {
@@ -55,6 +57,7 @@ export interface CourseData {
   title: string;
   description: string;
   gadgets: GadgetData[];
+  viewport?: ViewportTransform;
 }
 
 export type SimulationSpeed = 0.5 | 1.0 | 2.0;

@@ -239,6 +239,89 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
           </div>
         )}
 
+        {/* Brick Size & Weight Controls */}
+        {currentGadget.type === 'brick' && (
+          <div className="space-y-3">
+            {/* Brick Width */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-slate-300 font-medium">レンガのサイズ (幅)</span>
+                <span className="font-mono text-rose-400 font-bold">
+                  {currentGadget.options?.width || 72}px
+                </span>
+              </div>
+              <input
+                type="range"
+                min="40"
+                max="160"
+                step="4"
+                value={currentGadget.options?.width || 72}
+                onChange={(e) => updateGadget({ options: { width: Number(e.target.value) } })}
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500"
+              />
+              <div className="flex justify-between gap-1 mt-2">
+                {[
+                  { label: '標準 (72px)', w: 72, h: 36 },
+                  { label: '小型 (48px)', w: 48, h: 26 },
+                  { label: '大型 (100px)', w: 100, h: 44 },
+                ].map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => updateGadget({ options: { width: p.w, height: p.h } })}
+                    className={`flex-1 py-1 rounded text-[10px] font-medium transition border ${
+                      (currentGadget.options?.width || 72) === p.w
+                        ? 'bg-rose-600 text-white border-rose-500 font-bold'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Brick Weight / Density */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-slate-300 font-medium">重さ (重量感)</span>
+                <span className="font-mono text-amber-400 font-bold">
+                  約 {Math.round((currentGadget.options?.width || 72) * (currentGadget.options?.height || 36) * (currentGadget.options?.density || 0.012))}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0.006"
+                max="0.030"
+                step="0.002"
+                value={currentGadget.options?.density || 0.012}
+                onChange={(e) => updateGadget({ options: { density: Number(e.target.value) } })}
+                className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
+              />
+              <div className="flex justify-between gap-1 mt-2">
+                {[
+                  { label: '標準 (重量)', d: 0.012 },
+                  { label: '超重量', d: 0.024 },
+                  { label: '軽量', d: 0.006 },
+                ].map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => updateGadget({ options: { density: p.d } })}
+                    className={`flex-1 py-1 rounded text-[10px] font-medium transition border ${
+                      Math.abs((currentGadget.options?.density || 0.012) - p.d) < 0.001
+                        ? 'bg-amber-600 text-white border-amber-500 font-bold'
+                        : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Spring Bounce (Restitution) */}
         {currentGadget.type === 'spring' && (
           <div>
@@ -468,6 +551,47 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                 onChange={(e) => updateGadget({ options: { flowRate: Number(e.target.value) } })}
                 className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500"
               />
+            </div>
+          </div>
+        )}
+
+        {/* Paper Cup Initial Water Volume */}
+        {currentGadget.type === 'paper_cup' && (
+          <div>
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-slate-300 font-medium">初期水量</span>
+              <span className="font-mono text-sky-300 font-bold">
+                {Math.round((currentGadget.options?.waterAmount ?? 0) * 100)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.05"
+              value={currentGadget.options?.waterAmount ?? 0}
+              onChange={(e) => updateGadget({ options: { waterAmount: Number(e.target.value) } })}
+              className="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-sky-500"
+            />
+            <div className="flex justify-between gap-1 mt-2">
+              {[
+                { label: '空 (0%)', val: 0 },
+                { label: '半分 (50%)', val: 0.5 },
+                { label: '満杯 (100%)', val: 1.0 },
+              ].map((p) => (
+                <button
+                  key={p.val}
+                  type="button"
+                  onClick={() => updateGadget({ options: { waterAmount: p.val } })}
+                  className={`flex-1 py-1 rounded text-[10px] font-medium transition border ${
+                    (currentGadget.options?.waterAmount ?? 0) === p.val
+                      ? 'bg-sky-600 text-white border-sky-500 font-bold'
+                      : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
             </div>
           </div>
         )}

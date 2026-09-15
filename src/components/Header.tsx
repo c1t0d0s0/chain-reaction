@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Play, RotateCcw, Volume2, VolumeX, FolderDown, Upload, HelpCircle, Sparkles } from 'lucide-react';
+import { Play, RotateCcw, Volume2, VolumeX, Save, FolderOpen, HelpCircle, Sparkles } from 'lucide-react';
 import { CourseData } from '../types';
 import { DEFAULT_COURSES } from '../presets/defaultCourses';
 import { soundEngine } from '../audio/SoundEngine';
@@ -106,20 +106,24 @@ export const Header: React.FC<HeaderProps> = ({
           className="hidden"
         />
 
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition"
-          title="コースを読み込む (JSON)"
-        >
-          <Upload className="w-4 h-4" />
-        </button>
-
+        {/* Save button with clear floppy disk icon & label */}
         <button
           onClick={onExportCourse}
-          className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition"
-          title="コースを保存・エクスポート (JSON)"
+          className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700/60 transition flex items-center gap-1.5 shadow-sm active:scale-95"
+          title="作成したコースをファイルに保存 (JSONダウンロード)"
         >
-          <FolderDown className="w-4 h-4" />
+          <Save className="w-4 h-4 text-emerald-400" />
+          <span className="text-xs font-medium">保存</span>
+        </button>
+
+        {/* Load / Open button with clear folder open icon & label */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700/60 transition flex items-center gap-1.5 shadow-sm active:scale-95"
+          title="保存したコースファイル (JSON) を開く・読み込む"
+        >
+          <FolderOpen className="w-4 h-4 text-sky-400" />
+          <span className="text-xs font-medium">開く</span>
         </button>
 
         <div className="w-[1px] h-6 bg-slate-700 mx-1" />

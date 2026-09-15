@@ -19,9 +19,13 @@ export class PhysicsEngine {
   public playerMarbleBody: Matter.Body | null = null;
   private goalReached: boolean = false;
 
-  // Environment Floor (画面下部の床)
-  public floorY: number = 720;
+  // Environment Room Boundaries (床・左右の壁)
+  public floorY: number = 660;
+  public leftWallX: number = 20;
+  public rightWallX: number = 1240;
   public floorBody: Matter.Body | null = null;
+  public leftWallBody: Matter.Body | null = null;
+  public rightWallBody: Matter.Body | null = null;
   public waterDrops: { body: Matter.Body; birthTime: number }[] = [];
 
   constructor() {
@@ -106,7 +110,7 @@ export class PhysicsEngine {
         if (labelA === 'seesaw_plank' || labelB === 'seesaw_plank') {
           const seesawPlank = (labelA === 'seesaw_plank' ? bodyA : bodyB) as any;
           const otherBody = labelA === 'seesaw_plank' ? bodyB : bodyA;
-          if (speed > 0.8 || otherBody.label === 'book' || otherBody.label === 'domino') {
+          if (speed > 0.8 || otherBody.label === 'brick' || otherBody.label === 'book' || otherBody.label === 'domino') {
             if (seesawPlank.plugin) {
               seesawPlank.plugin.isTriggered = true;
             }
@@ -167,13 +171,15 @@ export class PhysicsEngine {
           continue;
         }
 
-        // Wood / Plank / Book / Floor impacts
+        // Wood / Plank / Book / Floor / Wall impacts
         if (
           labelA.includes('marble') || labelB.includes('marble') ||
           labelA === 'domino' || labelB === 'domino' ||
+          labelA === 'brick' || labelB === 'brick' ||
           labelA === 'book' || labelB === 'book' ||
           labelA === 'plank' || labelB === 'plank' ||
           labelA === 'floor' || labelB === 'floor' ||
+          labelA === 'wall' || labelB === 'wall' ||
           labelA === 'funnel_wall' || labelB === 'funnel_wall'
         ) {
           soundEngine.playWoodImpact(speed);
@@ -182,28 +188,85 @@ export class PhysicsEngine {
     });
   }
 
-  // Set floor Y coordinate (top surface of floor)
+  // Set room boundaries (left wall X, right wall X, floor top surface Y)
+  public setRoomBounds(left: number, right: number, floor: number) {
+    if (this.leftWallX === left && this.rightWallX === right && this.floorY === floor && this.floorBody && this.leftWallBody && this.rightWallBody) {
+      return;
+    }
+    this.leftWallX = left;
+    this.rightWallX = right;
+    this.floorY = floor;
+    this.recreateBoundaries();
+  }
+
+  // Set floor Y coordinate (top surface of floor) - backward compatibility
   public setFloor(y: number) {
     if (this.floorY === y && this.floorBody) return;
     this.floorY = y;
-    this.recreateFloor();
+    this.recreateBoundaries();
   }
 
-  // Recreate the static floor body
+  // Recreate the static floor body - backward compatibility
   public recreateFloor() {
+    this.recreateBoundaries();
+  }
+
+  // Recreate all room boundaries (floor and left/right physical walls)
+  public recreateBoundaries() {
     if (this.floorBody) {
       Composite.remove(this.engine.world, this.floorBody);
       this.floorBody = null;
     }
+    if (this.leftWallBody) {
+      Composite.remove(this.engine.world, this.leftWallBody);
+      this.leftWallBody = null;
+    }
+    if (this.rightWallBody) {
+      Composite.remove(this.engine.world, this.rightWallBody);
+      this.rightWallBody = null;
+    }
+
     const floorDepth = 600;
-    // Infinitely wide horizontal floor centered at x=0
-    this.floorBody = Matter.Bodies.rectangle(0, this.floorY + floorDepth / 2, 200000, floorDepth, {
+    // Infinitely wide horizontal floor centered at room midpoint
+    const roomCenterX = (this.leftWallX + this.rightWallX) / 2;
+    this.floorBody = Matter.Bodies.rectangle(roomCenterX, this.floorY + floorDepth / 2, 200000, floorDepth, {
       isStatic: true,
       friction: 0.5,
       restitution: 0.25,
       label: 'floor'
     });
-    Composite.add(this.engine.world, this.floorBody);
+
+    const wallThickness = 400;
+    const wallHeight = 4000;
+    // Left physical wall (inner edge at leftWallX)
+    this.leftWallBody = Matter.Bodies.rectangle(
+      this.leftWallX - wallThickness / 2,
+      this.floorY - wallHeight / 2 + 200,
+      wallThickness,
+      wallHeight,
+      {
+        isStatic: true,
+        friction: 0.2,
+        restitution: 0.35,
+        label: 'wall'
+      }
+    );
+
+    // Right physical wall (inner edge at rightWallX)
+    this.rightWallBody = Matter.Bodies.rectangle(
+      this.rightWallX + wallThickness / 2,
+      this.floorY - wallHeight / 2 + 200,
+      wallThickness,
+      wallHeight,
+      {
+        isStatic: true,
+        friction: 0.2,
+        restitution: 0.35,
+        label: 'wall'
+      }
+    );
+
+    Composite.add(this.engine.world, [this.floorBody, this.leftWallBody, this.rightWallBody]);
   }
 
   // Load a full course
@@ -484,16 +547,46 @@ export class PhysicsEngine {
         }
 
         const relAngle = body.angle - initialAngle;
-        const maxTilt = 0.46; // ~26.3 degrees max travel
+        const maxTilt = 0.40; // ~23 degrees natural travel
         if (relAngle > maxTilt) {
           Body.setAngle(body, initialAngle + maxTilt);
-          Body.setAngularVelocity(body, -Math.abs(body.angularVelocity) * 0.2);
+          if (body.angularVelocity > 0) {
+            Body.setAngularVelocity(body, 0);
+          }
         } else if (relAngle < -maxTilt) {
           Body.setAngle(body, initialAngle - maxTilt);
-          Body.setAngularVelocity(body, Math.abs(body.angularVelocity) * 0.2);
+          if (body.angularVelocity < 0) {
+            Body.setAngularVelocity(body, 0);
+          }
         }
         // Subtle rotational resting damping
         Body.setAngularVelocity(body, body.angularVelocity * 0.985);
+
+        // Rest stabilization for non-marbles on seesaw plank (prevents numerical micro-slip down the slope)
+        const plankHalfW = (body.plugin?.gadget?.options?.width ?? 220) / 2;
+        const uX = Math.cos(body.angle);
+        const uY = Math.sin(body.angle);
+
+        for (const other of dynamicBodies) {
+          if (other === body || other.label.includes('marble') || other.label.includes('water_drop')) continue;
+          const dx = other.position.x - body.position.x;
+          const dy = other.position.y - body.position.y;
+          const distAlongPlank = dx * uX + dy * uY;
+          const distNormalPlank = -dx * uY + dy * uX;
+
+          // If object is resting on top of the plank within its length
+          if (Math.abs(distAlongPlank) < plankHalfW + 10 && distNormalPlank < 0 && distNormalPlank > -40) {
+            const relVx = other.velocity.x - body.velocity.x;
+            const relVy = other.velocity.y - body.velocity.y;
+            const vTangent = relVx * uX + relVy * uY;
+            if (Math.abs(vTangent) < 2.0) {
+              Body.setVelocity(other, {
+                x: other.velocity.x - vTangent * uX * 0.9,
+                y: other.velocity.y - vTangent * uY * 0.9
+              });
+            }
+          }
+        }
       }
     }
 
@@ -683,12 +776,124 @@ export class PhysicsEngine {
       }
     }
 
+    // 8.5. Paper Cup Water Collection, Weight & Overflow (紙コップの貯水・重量増加・あふれ)
+    const paperCups = Array.from(this.bundles.values()).filter(b => b.type === 'paper_cup');
+    for (const cupBundle of paperCups) {
+      const cup = cupBundle.mainBody;
+      if (!cup.plugin) cup.plugin = {};
+      if (cup.plugin.waterLevel === undefined) cup.plugin.waterLevel = 0;
+      if (!cup.plugin.baseMass) cup.plugin.baseMass = cup.mass;
+
+      const w = cup.plugin.gadget?.options?.width || 56;
+      const h = cup.plugin.gadget?.options?.height || 64;
+
+      // Calculate tilt angle and maximum capacity before spilling over the lower rim
+      // When cup is upright (tilt=0): maxCapacity = 1.0.
+      // When tilted, the lower rim limits how much water can be retained.
+      const tilt = Math.abs(Math.atan2(Math.sin(cup.angle), Math.cos(cup.angle)));
+      let maxCapacity = 1.0;
+      if (tilt >= Math.PI / 2) {
+        maxCapacity = 0;
+      } else if (tilt > 0.05) {
+        const tanTheta = Math.tan(tilt);
+        const maxFillH = Math.max(0, h - (w / 2) * tanTheta);
+        maxCapacity = Math.max(0, Math.min(1, (maxFillH / h) * Math.cos(tilt)));
+      }
+      cup.plugin.maxCapacity = maxCapacity;
+
+      // Identify the lower rim for overflow spilling
+      const leftRimX = cup.position.x + (-w / 2 + 5) * Math.cos(cup.angle) - (-h / 2) * Math.sin(cup.angle);
+      const leftRimY = cup.position.y + (-w / 2 + 5) * Math.sin(cup.angle) + (-h / 2) * Math.cos(cup.angle);
+      const rightRimX = cup.position.x + (w / 2 - 5) * Math.cos(cup.angle) - (-h / 2) * Math.sin(cup.angle);
+      const rightRimY = cup.position.y + (w / 2 - 5) * Math.sin(cup.angle) + (-h / 2) * Math.cos(cup.angle);
+
+      // Which rim is lower (greater Y in canvas coords)?
+      const lowerRim = leftRimY >= rightRimY
+        ? { x: leftRimX, y: leftRimY, outward: -1 }
+        : { x: rightRimX, y: rightRimY, outward: 1 };
+
+      // 1. Inflow: absorb incoming water droplets entering the cup's mouth
+      const cos = Math.cos(-cup.angle);
+      const sin = Math.sin(-cup.angle);
+      const innerW = w - 16;
+      let newDropsAdded = 0;
+
+      for (const d of this.waterDrops) {
+        if ((d as any).isAbsorbed || d.body.plugin?.fromCup) continue;
+        const dx = d.body.position.x - cup.position.x;
+        const dy = d.body.position.y - cup.position.y;
+        const localX = dx * cos - dy * sin;
+        const localY = dx * sin + dy * cos;
+
+        // Check if droplet is inside the cup interior
+        if (localX >= -innerW / 2 && localX <= innerW / 2 && localY >= -h / 2 - 6 && localY <= h / 2 - 4) {
+          (d as any).isAbsorbed = true;
+          Composite.remove(this.engine.world, d.body);
+
+          // If cup has capacity, add to water level
+          if (cup.plugin.waterLevel < maxCapacity) {
+            cup.plugin.waterLevel = Math.min(maxCapacity, cup.plugin.waterLevel + 0.035);
+            newDropsAdded++;
+          } else {
+            // Already at full capacity -> queue overflow drop!
+            cup.plugin.overflowBuffer = (cup.plugin.overflowBuffer || 0) + 1;
+          }
+        }
+      }
+
+      if (newDropsAdded > 0) {
+        const now = Date.now();
+        if (!cup.plugin.lastDripSound || now - cup.plugin.lastDripSound > 160) {
+          cup.plugin.lastDripSound = now;
+          soundEngine.playWaterDrip(0.25);
+        }
+      }
+
+      // 2. Outflow / Overflow (あふれ出る水):
+      let isOverflowing = false;
+      cup.plugin.overflowCooldown = (cup.plugin.overflowCooldown || 0) + 1;
+
+      // Handle excess water from tilting (cup knocked over or tilted)
+      if (cup.plugin.waterLevel > maxCapacity) {
+        isOverflowing = true;
+        const excess = cup.plugin.waterLevel - maxCapacity;
+        const spillAmount = Math.min(excess, 0.04);
+        cup.plugin.waterLevel -= spillAmount;
+
+        if (cup.plugin.overflowCooldown >= 2) {
+          cup.plugin.overflowCooldown = 0;
+          this.spawnOverflowDrop(cup, lowerRim);
+        }
+      }
+
+      // Handle overflow from continuous faucet filling when full
+      if ((cup.plugin.overflowBuffer || 0) > 0) {
+        isOverflowing = true;
+        while (cup.plugin.overflowBuffer > 0) {
+          cup.plugin.overflowBuffer--;
+          if (cup.plugin.overflowCooldown >= 2) {
+            cup.plugin.overflowCooldown = 0;
+            this.spawnOverflowDrop(cup, lowerRim);
+          }
+        }
+      }
+
+      cup.plugin.isOverflowing = isOverflowing;
+
+      // 3. Dynamic Mass: cup gets realistically heavier with stored water
+      const waterMass = cup.plugin.waterLevel * 3.5;
+      Body.setMass(cup, cup.plugin.baseMass + waterMass);
+    }
+
+    // Clean up absorbed drops from array
+    this.waterDrops = this.waterDrops.filter(d => !(d as any).isAbsorbed);
+
     // Clean up expired or fallen water drops
     const nowTime = Date.now();
     const activeDrops: { body: Matter.Body; birthTime: number }[] = [];
     for (const d of this.waterDrops) {
       const age = nowTime - d.birthTime;
-      const isDead = age > 3000 || d.body.position.y > this.floorY + 30 || d.body.position.y < -200;
+      const isDead = age > 3000 || d.body.position.y > this.floorY + 30 || d.body.position.y < -200 || d.body.position.x < this.leftWallX - 80 || d.body.position.x > this.rightWallX + 80;
       if (isDead) {
         Composite.remove(this.engine.world, d.body);
       } else {
@@ -701,6 +906,37 @@ export class PhysicsEngine {
       if (oldest) Composite.remove(this.engine.world, oldest.body);
     }
     this.waterDrops = activeDrops;
+  }
+
+  // Spawn an overflowing water drop from paper cup rim
+  private spawnOverflowDrop(cup: Matter.Body, rim: { x: number; y: number; outward: number }) {
+    const r = 4.0 + (Math.random() - 0.5) * 1.0;
+    const drop = Matter.Bodies.circle(rim.x + rim.outward * (2 + Math.random() * 3), rim.y + 2, r, {
+      restitution: 0.12,
+      friction: 0.01,
+      frictionAir: 0.001,
+      density: 0.0035,
+      collisionFilter: {
+        category: 0x0004,
+        mask: 0xFFFFFFFF ^ 0x0002
+      },
+      label: 'water_drop'
+    });
+    drop.plugin = { birthTime: Date.now(), fromCup: true };
+
+    Matter.Body.setVelocity(drop, {
+      x: cup.velocity.x + rim.outward * (0.8 + Math.random() * 0.8),
+      y: cup.velocity.y + 0.8 + Math.random() * 0.6
+    });
+
+    Composite.add(this.engine.world, drop);
+    this.waterDrops.push({ body: drop, birthTime: Date.now() });
+
+    const now = Date.now();
+    if (!cup.plugin.lastSpillSound || now - cup.plugin.lastSpillSound > 180) {
+      cup.plugin.lastSpillSound = now;
+      soundEngine.playWaterDrip(0.22);
+    }
   }
 
   private updateAudioFeedback() {
