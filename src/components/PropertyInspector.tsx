@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { GadgetData } from '../types';
-import { Trash2, Copy, X, RotateCw, Sliders, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, Copy, X, RotateCw, RotateCcw, FlipHorizontal2, Sliders, ChevronDown, ChevronUp } from 'lucide-react';
 import { soundEngine } from '../audio/SoundEngine';
 import { useI18n } from '../i18n';
 
@@ -10,6 +10,8 @@ interface PropertyInspectorProps {
   onUpdate: (updated: GadgetData) => void;
   onDuplicate: (gadget: GadgetData) => void;
   onDelete: (id: string) => void;
+  onFlip?: () => void;
+  onRotateStep?: (deltaDeg: number) => void;
   onClose: () => void;
 }
 
@@ -19,6 +21,8 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   onUpdate,
   onDuplicate,
   onDelete,
+  onFlip,
+  onRotateStep,
   onClose,
 }) => {
   const { t, getGadgetText, lang } = useI18n();
@@ -50,8 +54,28 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   };
 
   const handleAngleChange = (newDeg: number) => {
-    const rad = (newDeg * Math.PI) / 180;
+    let normalized = newDeg;
+    while (normalized > 180) normalized -= 360;
+    while (normalized < -180) normalized += 360;
+    const rad = (normalized * Math.PI) / 180;
     updateGadget({ angle: rad });
+  };
+
+  const handleStepRotate = (delta: number) => {
+    if (onRotateStep) {
+      onRotateStep(delta);
+    } else {
+      const nextDeg = Math.round((deg + delta) / 15) * 15;
+      handleAngleChange(nextDeg);
+    }
+  };
+
+  const handleFlipInternal = () => {
+    if (onFlip) {
+      onFlip();
+    } else {
+      handleAngleChange(-deg);
+    }
   };
 
   const handleWidthChange = (w: number) => {
@@ -218,6 +242,37 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
               ))}
             </div>
           )}
+
+          {/* Quick Step Rotation (-15° / +15°) & Flip */}
+          <div className="flex items-center gap-1.5 mt-2">
+            <button
+              type="button"
+              onClick={() => handleStepRotate(-15)}
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 text-xs font-medium transition active:scale-95 shadow-sm"
+              title={t('rotLeftTip')}
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-sky-400" />
+              <span className="text-[11px] font-mono">-15°</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleStepRotate(15)}
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 text-xs font-medium transition active:scale-95 shadow-sm"
+              title={t('rotRightTip')}
+            >
+              <RotateCw className="w-3.5 h-3.5 text-sky-400" />
+              <span className="text-[11px] font-mono">+15°</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleFlipInternal}
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 text-xs font-medium transition active:scale-95 shadow-sm"
+              title={t('flipTip')}
+            >
+              <FlipHorizontal2 className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-[11px]">{t('flip')}</span>
+            </button>
+          </div>
         </div>
 
         {/* Width / Length Slider for Planks, Tubes, Bands, Seesaw */}

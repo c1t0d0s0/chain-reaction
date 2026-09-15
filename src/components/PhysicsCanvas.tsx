@@ -3,7 +3,8 @@ import Matter from 'matter-js';
 import { GadgetData, GadgetType, ViewportTransform } from '../types';
 import { PhysicsEngine } from '../physics/PhysicsEngine';
 import { CanvasRenderer } from '../rendering/CanvasRenderer';
-import { QuickActionBar } from './QuickActionBar';
+import { Sliders } from 'lucide-react';
+import { useI18n } from '../i18n';
 import { PropertyInspector } from './PropertyInspector';
 
 const { Query, Body } = Matter;
@@ -41,6 +42,7 @@ export const PhysicsCanvas: React.FC<PhysicsCanvasProps> = ({
   followMarble,
   onCanvasResize,
 }) => {
+  const { t } = useI18n();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<CanvasRenderer>(new CanvasRenderer());
   const [hoveredGadgetId, setHoveredGadgetId] = useState<string | null>(null);
@@ -910,29 +912,30 @@ export const PhysicsCanvas: React.FC<PhysicsCanvasProps> = ({
         className="block w-full h-full touch-none"
       />
 
-      <QuickActionBar
-        selectedGadget={selectedGadget}
-        transform={transform}
-        canvasWidth={canvasSize.width}
-        canvasHeight={canvasSize.height}
-        onDuplicate={handleDuplicate}
-        onRotateStep={handleRotateStep}
-        onFlip={handleFlip}
-        onDelete={handleDelete}
-        onToggleInspector={() => setIsInspectorOpen(!isInspectorOpen)}
-        isInspectorOpen={isInspectorOpen}
-        isPlayMode={physics.isRunning}
-      />
-
-      {selectedGadget && !physics.isRunning && isInspectorOpen && (
-        <PropertyInspector
-          gadget={selectedGadget}
-          dockSide={inspectorDockSide}
-          onUpdate={handlePropertyUpdate}
-          onDuplicate={handleDuplicate}
-          onDelete={handleDelete}
-          onClose={() => setIsInspectorOpen(false)}
-        />
+      {selectedGadget && !physics.isRunning && (
+        isInspectorOpen ? (
+          <PropertyInspector
+            gadget={selectedGadget}
+            dockSide={inspectorDockSide}
+            onUpdate={handlePropertyUpdate}
+            onDuplicate={handleDuplicate}
+            onDelete={handleDelete}
+            onFlip={handleFlip}
+            onRotateStep={handleRotateStep}
+            onClose={() => setIsInspectorOpen(false)}
+          />
+        ) : (
+          /* Re-open button when inspector is closed */
+          <button
+            type="button"
+            onClick={() => setIsInspectorOpen(true)}
+            className={`absolute top-4 ${inspectorDockSide === 'left' ? 'left-4' : 'right-4'} z-30 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900/90 hover:bg-slate-800 text-sky-400 hover:text-white border border-slate-700/80 shadow-lg text-xs font-medium transition active:scale-95`}
+            title={t('settingsTip')}
+          >
+            <Sliders className="w-4 h-4" />
+            <span>{t('settings')}</span>
+          </button>
+        )
       )}
     </div>
   );

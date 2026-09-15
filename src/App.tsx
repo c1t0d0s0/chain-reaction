@@ -108,6 +108,14 @@ export const App: React.FC = () => {
           physics.removeGadget(selectedGadgetId);
           setSelectedGadgetId(null);
         }
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+        e.preventDefault();
+        if (selectedGadgetId && !physics.isRunning) {
+          const bundle = physics.bundles.get(selectedGadgetId);
+          if (bundle?.mainBody?.plugin?.gadget) {
+            handleGadgetDuplicate(bundle.mainBody.plugin.gadget as GadgetData);
+          }
+        }
       } else if (e.key === 'Escape' || e.key === 'v' || e.key === 'V') {
         setSelectedTool(null);
       }
