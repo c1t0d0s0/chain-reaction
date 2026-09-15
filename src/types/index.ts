@@ -57,7 +57,9 @@ export interface GadgetData {
 export interface CourseData {
   id: string;
   title: string;
+  titleEn?: string;
   description: string;
+  descriptionEn?: string;
   gadgets: GadgetData[];
   viewport?: ViewportTransform;
 }

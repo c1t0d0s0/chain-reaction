@@ -1,6 +1,7 @@
 import React from 'react';
 import { Play, Pause, RotateCcw, Grid, ZoomIn, ZoomOut, Maximize2, Video, Edit3, Magnet, Pin, Droplet } from 'lucide-react';
 import { SimulationSpeed } from '../types';
+import { useI18n } from '../i18n';
 
 interface ToolbarProps {
   mode: 'edit' | 'play';
@@ -47,6 +48,8 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   onToggleFollowMarble,
   onDrainWater,
 }) => {
+  const { t } = useI18n();
+
   return (
     <div className="h-12 bg-slate-800/90 backdrop-blur border-b border-slate-700/60 px-4 flex items-center justify-between z-20 shadow-sm select-none">
       {/* Simulation Play / Edit Controls */}
@@ -55,7 +58,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           <>
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-sky-500/15 border border-sky-500/40 text-sky-300 text-xs font-bold">
               <Edit3 className="w-3.5 h-3.5" />
-              <span>編集</span>
+              <span>{t('editModeBadge')}</span>
             </div>
 
             <button
@@ -63,7 +66,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-900/30 transition active:scale-95"
             >
               <Play className="w-4 h-4 fill-white" />
-              <span>スタート</span>
+              <span>{t('start')}</span>
             </button>
 
             {/* Snap Toggle Button */}
@@ -74,10 +77,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   ? 'bg-amber-500/20 border-amber-500/60 text-amber-300 shadow-sm shadow-amber-500/10'
                   : 'bg-slate-700/60 border-slate-600 text-slate-400 hover:text-slate-200'
               }`}
-              title="15°角度＆20pxグリッドスナップ切替"
+              title={t('snapTip')}
             >
               <Magnet className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">スナップ {snapEnabled ? 'ON' : 'OFF'}</span>
+              <span className="hidden md:inline">{t('snap')} {snapEnabled ? 'ON' : 'OFF'}</span>
             </button>
 
             {/* Continuous Placement Button */}
@@ -88,20 +91,20 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                   ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 shadow-sm shadow-emerald-500/10'
                   : 'bg-slate-700/60 border-slate-600 text-slate-400 hover:text-slate-200'
               }`}
-              title="連続スタンプ配置モード切替（同じパーツをタップで連続配置）"
+              title={t('continuousTip')}
             >
               <Pin className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">連続配置 {continuousPlacement ? 'ON' : 'OFF'}</span>
+              <span className="hidden md:inline">{t('continuous')} {continuousPlacement ? 'ON' : 'OFF'}</span>
             </button>
 
             {onDrainWater && (
               <button
                 onClick={onDrainWater}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-700/60 hover:bg-slate-600 text-slate-300 font-medium text-xs border border-slate-600 transition active:scale-95"
-                title="床に溜まった水を排水する"
+                title={t('drainTip')}
               >
                 <Droplet className="w-3.5 h-3.5 text-sky-400" />
-                <span className="hidden md:inline">排水</span>
+                <span className="hidden md:inline">{t('drain')}</span>
               </button>
             )}
           </>
@@ -110,10 +113,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             <button
               onClick={onEnterEditMode}
               className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs shadow-md shadow-sky-900/40 transition active:scale-95"
-              title="初期状態に戻して編集モードにする"
+              title={t('backToEditTip')}
             >
               <Edit3 className="w-4 h-4" />
-              <span>✏️ 編集モードに戻る</span>
+              <span>{t('backToEdit')}</span>
             </button>
 
             {isRunning ? (
@@ -122,7 +125,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs shadow-md shadow-amber-900/30 transition active:scale-95"
               >
                 <Pause className="w-4 h-4 fill-white" />
-                <span>一時停止</span>
+                <span>{t('pause')}</span>
               </button>
             ) : (
               <button
@@ -130,27 +133,27 @@ export const Toolbar: React.FC<ToolbarProps> = ({
                 className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-md shadow-emerald-900/30 transition active:scale-95"
               >
                 <Play className="w-4 h-4 fill-white" />
-                <span>再開</span>
+                <span>{t('resume')}</span>
               </button>
             )}
 
             <button
               onClick={onReset}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium text-xs border border-slate-600 transition active:scale-95"
-              title="最初から再生し直す"
+              title={t('resetTip')}
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>やり直す</span>
+              <span>{t('reset')}</span>
             </button>
 
             {onDrainWater && (
               <button
                 onClick={onDrainWater}
                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-sky-950/60 hover:bg-sky-900/80 text-sky-300 font-medium text-xs border border-sky-600/40 transition active:scale-95"
-                title="床に溜まった水を排水する"
+                title={t('drainTip')}
               >
                 <Droplet className="w-3.5 h-3.5 text-sky-400" />
-                <span>排水</span>
+                <span>{t('drain')}</span>
               </button>
             )}
           </>
@@ -184,10 +187,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               ? 'bg-sky-600/20 border-sky-500/50 text-sky-300'
               : 'bg-slate-700/60 border-slate-600 text-slate-400 hover:text-slate-200'
           }`}
-          title="ボール自動追従カメラ"
+          title={t('followCamTip')}
         >
           <Video className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">追従カメラ</span>
+          <span className="hidden sm:inline">{t('followCam')}</span>
         </button>
 
         {/* Toggle Grid */}
@@ -198,7 +201,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               ? 'bg-sky-600/20 border-sky-500/50 text-sky-300'
               : 'bg-slate-700/60 border-slate-600 text-slate-400 hover:text-slate-200'
           }`}
-          title="グリッド表示切替"
+          title={t('gridTip')}
         >
           <Grid className="w-4 h-4" />
         </button>
@@ -209,7 +212,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           onClick={onZoomIn}
           className="p-1.5 rounded-lg bg-slate-700/60 hover:bg-slate-600 border border-slate-600 text-slate-300 transition"
-          title="ズームイン"
+          title={t('zoomIn')}
         >
           <ZoomIn className="w-4 h-4" />
         </button>
@@ -217,7 +220,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           onClick={onZoomOut}
           className="p-1.5 rounded-lg bg-slate-700/60 hover:bg-slate-600 border border-slate-600 text-slate-300 transition"
-          title="ズームアウト"
+          title={t('zoomOut')}
         >
           <ZoomOut className="w-4 h-4" />
         </button>
@@ -225,7 +228,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button
           onClick={onResetView}
           className="p-1.5 rounded-lg bg-slate-700/60 hover:bg-slate-600 border border-slate-600 text-slate-300 transition"
-          title="表示位置リセット (100%)"
+          title={t('resetView')}
         >
           <Maximize2 className="w-4 h-4" />
         </button>

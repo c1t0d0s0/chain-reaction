@@ -4,7 +4,9 @@ export const DEFAULT_COURSES: CourseData[] = [
   {
     id: 'course-1',
     title: '1. 基本の坂道とドミノ連鎖',
-    description: '坂道を転がった赤いビー玉がドミノを倒し、本を押し倒してシーソーを動かす基本コースです。',
+    titleEn: '1. Basic Ramps & Domino Cascade',
+    description: '坂道を転がったビー玉がドミノを倒し、レンガを押し倒してシーソーを動かす基本コースです。',
+    descriptionEn: 'A starter course where a rolling marble triggers dominoes and tips a seesaw to reach the goal.',
     gadgets: [
       // Start Gate
       {
@@ -106,7 +108,9 @@ export const DEFAULT_COURSES: CourseData[] = [
   {
     id: 'course-2',
     title: '2. バネと芯の空中ジャンプ',
+    titleEn: '2. Springs & Tubes Aerial Jumps',
     description: '坂を下りたビー玉がバネで勢いよく跳ね上がり、空中のトイレットペーパー芯をくぐり抜けてゴールします。',
+    descriptionEn: 'A dynamic course with high-impulse spring bouncers, paper tube tunnels, and aerial jumps.',
     gadgets: [
       // Start Gate
       {
@@ -183,7 +187,9 @@ export const DEFAULT_COURSES: CourseData[] = [
   {
     id: 'course-3',
     title: '3. 風と水と磁石のからくり大実験',
+    titleEn: '3. Wind, Water & Magnet Contraption',
     description: '蛇口から注がれる涼しげな水滴のシャワーを浴びて水車を回し、扇風機の突風で飛ばされ、磁石の力で引き寄せられてゴールするダイナミックなコースです。',
+    descriptionEn: 'A multi-force course featuring aerodynamic wind, magnetic pull, and water-filled paper cups tipping a seesaw.',
     gadgets: [
       // Start Gate
       {
@@ -287,7 +293,9 @@ export const DEFAULT_COURSES: CourseData[] = [
   {
     id: 'course-4',
     title: '4. ピタゴラからくり大実験 (新登場ギミック)',
+    titleEn: '4. The Ultimate Contraption',
     description: '回転水車、音階ベル（ド・ミ・ソ♪）、すり鉢ロートの渦巻き、てこカタパルトの跳ね上げが連鎖する大実験コースです。',
+    descriptionEn: 'An elaborate chain reaction connecting rotary paddle wheels, musical bells, spiral funnels, and catapults!',
     gadgets: [
       // Start Gate
       {

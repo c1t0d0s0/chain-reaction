@@ -181,7 +181,9 @@ export const App: React.FC = () => {
     const emptyCourse: CourseData = {
       id: `custom-${Date.now()}`,
       title: 'オリジナルコース',
+      titleEn: 'Custom Course',
       description: '自由に道具を配置して作成したコース',
+      descriptionEn: 'Freely create and place gadgets in this custom course',
       gadgets: [
         {
           id: 'start-new',

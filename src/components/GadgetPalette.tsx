@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { GadgetType } from '../types';
+import { useI18n } from '../i18n';
 import {
   MousePointer2,
   CircleDot,
@@ -192,6 +193,7 @@ export const GadgetPalette: React.FC<GadgetPaletteProps> = ({
   selectedTool,
   onSelectTool,
 }) => {
+  const { t, getGadgetText, lang } = useI18n();
   const [activeTab, setActiveTab] = useState<'all' | 'ramp' | 'reaction' | 'bounce' | 'field'>('all');
 
   const filteredItems = activeTab === 'all'
@@ -221,7 +223,7 @@ export const GadgetPalette: React.FC<GadgetPaletteProps> = ({
           </div>
           <div className="flex-1 text-left">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold">選択・編集モード</span>
+              <span className="text-xs font-bold">{t('selectMode')}</span>
               {selectedTool === null && (
                 <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-semibold">
                   ON
@@ -229,7 +231,7 @@ export const GadgetPalette: React.FC<GadgetPaletteProps> = ({
               )}
             </div>
             <span className="text-[10px] text-slate-300/80 block">
-              道具を選択・移動・角度調整
+              {t('selectModeDesc')}
             </span>
           </div>
         </button>
@@ -238,13 +240,13 @@ export const GadgetPalette: React.FC<GadgetPaletteProps> = ({
         {selectedTool !== null && (
           <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg flex items-center justify-between text-[11px]">
             <span className="text-amber-300 font-medium">
-              画面クリックで配置中
+              {t('placingActive')}
             </span>
             <button
               onClick={() => onSelectTool(null)}
               className="text-[10px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2 py-0.5 rounded border border-slate-600"
             >
-              完了 (Esc)
+              {t('placingDone')}
             </button>
           </div>
         )}
@@ -253,11 +255,11 @@ export const GadgetPalette: React.FC<GadgetPaletteProps> = ({
       {/* Category Tabs */}
       <div className="p-2 border-b border-slate-800 flex flex-wrap gap-1">
         {[
-          { id: 'all', label: 'すべて' },
-          { id: 'ramp', label: '坂・道' },
-          { id: 'reaction', label: 'からくり' },
-          { id: 'bounce', label: 'バネ・弾性' },
-          { id: 'field', label: '風・磁石・水' },
+          { id: 'all', label: t('tabAll') },
+          { id: 'ramp', label: t('tabRamp') },
+          { id: 'reaction', label: t('tabReaction') },
+          { id: 'bounce', label: t('tabBounce') },
+          { id: 'field', label: t('tabField') },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -277,6 +279,8 @@ export const GadgetPalette: React.FC<GadgetPaletteProps> = ({
       <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 custom-scrollbar">
         {filteredItems.map((item) => {
           const isSelected = selectedTool === item.type;
+          const { label, desc } = getGadgetText(item.type);
+
           return (
             <div
               key={item.type}
@@ -296,14 +300,14 @@ export const GadgetPalette: React.FC<GadgetPaletteProps> = ({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold truncate">{item.label}</h4>
+                  <h4 className="text-xs font-bold truncate">{label || item.label}</h4>
                   {isSelected && (
                     <span className="text-[10px] font-semibold text-sky-400 bg-sky-950 px-1.5 py-0.5 rounded">
-                      配置モード
+                      {lang === 'ja' ? '配置中' : 'Placing'}
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] text-slate-400 truncate">{item.description}</p>
+                <p className="text-[10px] text-slate-400 truncate">{desc || item.description}</p>
               </div>
             </div>
           );
@@ -312,8 +316,12 @@ export const GadgetPalette: React.FC<GadgetPaletteProps> = ({
 
       {/* Helpful Hint */}
       <div className="p-3 bg-slate-950/60 border-t border-slate-800/80 text-[11px] text-slate-400">
-        <p className="font-semibold text-slate-300 mb-1">💡 ヒント</p>
-        <p>アイテムを選んで画面をクリックすると配置できます。選択したアイテムは回転ハンドルで角度を変えられます。</p>
+        <p className="font-semibold text-slate-300 mb-1">{lang === 'ja' ? '💡 ヒント' : '💡 Tip'}</p>
+        <p>
+          {lang === 'ja'
+            ? 'アイテムを選んで画面をクリックすると配置できます。選択したアイテムは回転ハンドルで角度を変えられます。'
+            : 'Select an item and click the canvas to place it. Drag the rotation ring to adjust its slope.'}
+        </p>
       </div>
     </aside>
   );

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { Sparkles, RotateCcw, ArrowRight, Edit3 } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 interface GoalModalProps {
   isOpen: boolean;
@@ -15,6 +16,8 @@ export const GoalModal: React.FC<GoalModalProps> = ({
   onNextStage,
   onClose,
 }) => {
+  const { t } = useI18n();
+
   useEffect(() => {
     if (isOpen) {
       // Fire vibrant confetti explosions
@@ -72,15 +75,14 @@ export const GoalModal: React.FC<GoalModalProps> = ({
         </div>
 
         <h2 className="text-2xl font-black tracking-tight text-white mb-1 flex items-center justify-center gap-2">
-          ピタゴラ成功！
+          {t('goalSuccess')}
         </h2>
         <p className="text-sm font-bold text-amber-400 tracking-widest uppercase mb-4">
-          GOAL REACHED!
+          {t('goalSubTitle')}
         </p>
 
-        <p className="text-xs text-slate-300 mb-6 leading-relaxed">
-          赤いビー玉が見事にゴールへ到達しました！<br />
-          様々な物理現象の美しい連鎖反応が完成しました。
+        <p className="text-xs text-slate-300 mb-6 leading-relaxed whitespace-pre-line">
+          {t('goalMessage')}
         </p>
 
         {/* Action Buttons */}
@@ -90,7 +92,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
             className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm shadow-md shadow-emerald-900/40 transition active:scale-95"
           >
             <RotateCcw className="w-4 h-4" />
-            <span>もう一度再生する</span>
+            <span>{t('goalReplay')}</span>
           </button>
 
           {onNextStage && (
@@ -98,7 +100,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
               onClick={onNextStage}
               className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold text-sm shadow-md shadow-sky-900/40 transition active:scale-95"
             >
-              <span>次のステージへ</span>
+              <span>{t('goalNext')}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           )}
@@ -108,7 +110,7 @@ export const GoalModal: React.FC<GoalModalProps> = ({
             className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium border border-slate-700 transition"
           >
             <Edit3 className="w-3.5 h-3.5" />
-            <span>コースをさらに改造する</span>
+            <span>{t('goalEdit')}</span>
           </button>
         </div>
       </div>

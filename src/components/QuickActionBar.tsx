@@ -1,6 +1,7 @@
 import React from 'react';
 import { GadgetData, ViewportTransform } from '../types';
 import { Copy, RotateCcw, RotateCw, FlipHorizontal2, Trash2, Sliders } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 interface QuickActionBarProps {
   selectedGadget: GadgetData | null;
@@ -29,6 +30,8 @@ export const QuickActionBar: React.FC<QuickActionBarProps> = ({
   isInspectorOpen,
   isPlayMode,
 }) => {
+  const { t } = useI18n();
+
   if (!selectedGadget || isPlayMode) return null;
 
   // Compute screen coordinates of the selected gadget
@@ -57,10 +60,10 @@ export const QuickActionBar: React.FC<QuickActionBarProps> = ({
         type="button"
         onClick={() => onDuplicate(selectedGadget)}
         className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-sky-600 hover:text-white text-slate-200 text-xs font-medium border border-slate-700/60 transition active:scale-95"
-        title="複製して隣に配置"
+        title={t('dupTip')}
       >
         <Copy className="w-3.5 h-3.5" />
-        <span className="text-[11px]">複製</span>
+        <span className="text-[11px]">{t('dup')}</span>
       </button>
 
       <div className="w-[1px] h-4 bg-slate-700/70 my-auto mx-0.5" />
@@ -70,7 +73,7 @@ export const QuickActionBar: React.FC<QuickActionBarProps> = ({
         type="button"
         onClick={() => onRotateStep(-15)}
         className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 hover:text-sky-300 text-slate-300 border border-slate-700/60 transition active:scale-95"
-        title="左に15°回転"
+        title={t('rotLeftTip')}
       >
         <RotateCcw className="w-3.5 h-3.5" />
       </button>
@@ -80,7 +83,7 @@ export const QuickActionBar: React.FC<QuickActionBarProps> = ({
         type="button"
         onClick={() => onRotateStep(15)}
         className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 hover:text-sky-300 text-slate-300 border border-slate-700/60 transition active:scale-95"
-        title="右に15°回転"
+        title={t('rotRightTip')}
       >
         <RotateCw className="w-3.5 h-3.5" />
       </button>
@@ -90,7 +93,7 @@ export const QuickActionBar: React.FC<QuickActionBarProps> = ({
         type="button"
         onClick={onFlip}
         className="p-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 hover:text-sky-300 text-slate-300 border border-slate-700/60 transition active:scale-95"
-        title="傾き・向きを左右反転"
+        title={t('flipTip')}
       >
         <FlipHorizontal2 className="w-3.5 h-3.5" />
       </button>
@@ -105,10 +108,10 @@ export const QuickActionBar: React.FC<QuickActionBarProps> = ({
               ? 'bg-sky-600 text-white border-sky-400 font-bold shadow-md shadow-sky-600/30'
               : 'bg-slate-800/80 hover:bg-slate-700 hover:text-sky-300 text-slate-300 border border-slate-700/60'
           }`}
-          title="詳細プロパティ設定パネルの表示/非表示"
+          title={t('settingsTip')}
         >
           <Sliders className="w-3.5 h-3.5" />
-          <span className="text-[11px] hidden sm:inline">設定</span>
+          <span className="text-[11px] hidden sm:inline">{t('settings')}</span>
         </button>
       )}
 
@@ -119,7 +122,7 @@ export const QuickActionBar: React.FC<QuickActionBarProps> = ({
         type="button"
         onClick={() => onDelete(selectedGadget.id)}
         className="p-1.5 rounded-xl bg-red-500/15 hover:bg-red-600 hover:text-white text-red-400 border border-red-500/30 transition active:scale-95"
-        title="削除"
+        title={t('deleteTip')}
       >
         <Trash2 className="w-3.5 h-3.5" />
       </button>

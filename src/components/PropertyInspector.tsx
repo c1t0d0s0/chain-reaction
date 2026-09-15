@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { GadgetData } from '../types';
 import { Trash2, Copy, X, RotateCw, Sliders, ChevronDown, ChevronUp } from 'lucide-react';
 import { soundEngine } from '../audio/SoundEngine';
+import { useI18n } from '../i18n';
 
 interface PropertyInspectorProps {
   gadget: GadgetData | null;
@@ -20,6 +21,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
   onDelete,
   onClose,
 }) => {
+  const { t, getGadgetText, lang } = useI18n();
   if (!gadget) return null;
 
   // Local synchronized state to prevent stale closures when changing multiple properties
@@ -93,16 +95,16 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
           type="button"
           onClick={() => setIsMinimized(false)}
           className="flex items-center gap-1 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-medium border border-slate-700/60 transition"
-          title="設定パネルを展開"
+          title={t('settingsTip')}
         >
-          <span>設定</span>
+          <span>{t('settings')}</span>
           <ChevronUp className="w-3 h-3 text-sky-400" />
         </button>
         <button
           type="button"
           onClick={onClose}
           className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition"
-          title="閉じる"
+          title={t('close')}
         >
           <X className="w-3.5 h-3.5" />
         </button>
@@ -119,7 +121,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         <div className="flex items-center gap-2">
           <Sliders className="w-4 h-4 text-sky-400" />
           <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-            プロパティ設定
+            {t('inspectorTitle')}
           </h3>
         </div>
         <div className="flex items-center gap-1">
@@ -127,7 +129,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
             type="button"
             onClick={() => setIsMinimized(true)}
             className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition"
-            title="最小化"
+            title={t('minimize')}
           >
             <ChevronDown className="w-4 h-4" />
           </button>
@@ -135,7 +137,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
             type="button"
             onClick={onClose}
             className="p-1 rounded-md text-slate-400 hover:text-white hover:bg-slate-800 transition"
-            title="閉じる"
+            title={t('close')}
           >
             <X className="w-4 h-4" />
           </button>
@@ -146,8 +148,8 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
       <div className="flex-1 overflow-y-auto py-4 space-y-4 text-xs">
         {/* Type & ID */}
         <div className="bg-slate-800/60 p-2.5 rounded-lg border border-slate-700/50">
-          <span className="text-[10px] text-slate-400 font-semibold block mb-0.5">種別</span>
-          <span className="font-bold text-slate-200 uppercase">{currentGadget.type}</span>
+          <span className="text-[10px] text-slate-400 font-semibold block mb-0.5">{t('typeLabel')}</span>
+          <span className="font-bold text-slate-200 uppercase">{getGadgetText(currentGadget.type).label}</span>
           <span className="text-[10px] text-slate-500 block font-mono mt-0.5">{currentGadget.id}</span>
         </div>
 
@@ -155,7 +157,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         <div>
           <div className="flex justify-between items-center mb-1.5">
             <span className="text-slate-300 font-medium flex items-center gap-1">
-              <RotateCw className="w-3 h-3 text-sky-400" /> 角度 (傾き)
+              <RotateCw className="w-3 h-3 text-sky-400" /> {t('angleLabel')}
             </span>
             <span className="font-mono text-sky-300 font-bold bg-sky-950/80 px-1.5 py-0.5 rounded border border-sky-800">
               {deg}°
@@ -173,17 +175,17 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
           {/* Quick angle presets */}
           {currentGadget.type === 'fan' ? (
             <div className="space-y-1.5 mt-2">
-              <span className="text-[11px] text-sky-300 font-medium block">風の向き (プリセット):</span>
+              <span className="text-[11px] text-sky-300 font-medium block">{t('windPresets')}</span>
               <div className="grid grid-cols-4 gap-1">
                 {[
-                  { label: '➡ 右 (0°)', angle: 0 },
-                  { label: '⬇ 下 (90°)', angle: 90 },
-                  { label: '⬅ 左 (180°)', angle: 180 },
-                  { label: '⬆ 上 (-90°)', angle: -90 },
-                  { label: '↗ 右上', angle: -45 },
-                  { label: '↘ 右下', angle: 45 },
-                  { label: '↖ 左上', angle: -135 },
-                  { label: '↙ 左下', angle: 135 },
+                  { label: lang === 'ja' ? '➡ 右 (0°)' : '➡ Right', angle: 0 },
+                  { label: lang === 'ja' ? '⬇ 下 (90°)' : '⬇ Down', angle: 90 },
+                  { label: lang === 'ja' ? '⬅ 左 (180°)' : '⬅ Left', angle: 180 },
+                  { label: lang === 'ja' ? '⬆ 上 (-90°)' : '⬆ Up', angle: -90 },
+                  { label: lang === 'ja' ? '↗ 右上' : '↗ Up-R', angle: -45 },
+                  { label: lang === 'ja' ? '↘ 右下' : '↘ Down-R', angle: 45 },
+                  { label: lang === 'ja' ? '↖ 左上' : '↖ Up-L', angle: -135 },
+                  { label: lang === 'ja' ? '↙ 左下' : '↙ Down-L', angle: 135 },
                 ].map((item) => (
                   <button
                     key={item.angle}
@@ -222,7 +224,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         {['plank', 'toilet_paper_tube', 'rubber_band', 'seesaw'].includes(currentGadget.type) && (
           <div>
             <div className="flex justify-between items-center mb-1.5">
-              <span className="text-slate-300 font-medium">長さ / 幅</span>
+              <span className="text-slate-300 font-medium">{t('widthLabel')}</span>
               <span className="font-mono text-amber-300 font-bold">
                 {currentGadget.options?.width || (currentGadget.type === 'seesaw' ? 220 : 180)}px
               </span>
@@ -245,7 +247,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
             {/* Brick Width */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-slate-300 font-medium">レンガのサイズ (幅)</span>
+                <span className="text-slate-300 font-medium">{lang === 'ja' ? 'レンガのサイズ (幅)' : 'Brick Size (Width)'}</span>
                 <span className="font-mono text-rose-400 font-bold">
                   {currentGadget.options?.width || 72}px
                 </span>
@@ -261,9 +263,9 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
               />
               <div className="flex justify-between gap-1 mt-2">
                 {[
-                  { label: '標準 (72px)', w: 72, h: 36 },
-                  { label: '小型 (48px)', w: 48, h: 26 },
-                  { label: '大型 (100px)', w: 100, h: 44 },
+                  { label: lang === 'ja' ? '標準 (72px)' : 'Normal (72px)', w: 72, h: 36 },
+                  { label: lang === 'ja' ? '小型 (48px)' : 'Small (48px)', w: 48, h: 26 },
+                  { label: lang === 'ja' ? '大型 (100px)' : 'Large (100px)', w: 100, h: 44 },
                 ].map((p) => (
                   <button
                     key={p.label}
@@ -284,9 +286,9 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
             {/* Brick Weight / Density */}
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-slate-300 font-medium">重さ (重量感)</span>
+                <span className="text-slate-300 font-medium">{t('densityLabel')}</span>
                 <span className="font-mono text-amber-400 font-bold">
-                  約 {Math.round((currentGadget.options?.width || 72) * (currentGadget.options?.height || 36) * (currentGadget.options?.density || 0.012))}
+                  ~{Math.round((currentGadget.options?.width || 72) * (currentGadget.options?.height || 36) * (currentGadget.options?.density || 0.012))}
                 </span>
               </div>
               <input
@@ -300,9 +302,9 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
               />
               <div className="flex justify-between gap-1 mt-2">
                 {[
-                  { label: '標準 (重量)', d: 0.012 },
-                  { label: '超重量', d: 0.024 },
-                  { label: '軽量', d: 0.006 },
+                  { label: t('densityNormal'), d: 0.012 },
+                  { label: t('densityHeavy'), d: 0.024 },
+                  { label: t('densityLight'), d: 0.006 },
                 ].map((p) => (
                   <button
                     key={p.label}
@@ -326,7 +328,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         {currentGadget.type === 'spring' && (
           <div>
             <div className="flex justify-between items-center mb-1.5">
-              <span className="text-slate-300 font-medium">反発力 (バネ強度)</span>
+              <span className="text-slate-300 font-medium">{t('restitutionLabel')}</span>
               <span className="font-mono text-amber-300 font-bold">
                 {(currentGadget.options?.restitution ?? 1.5).toFixed(1)}x
               </span>
@@ -347,7 +349,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         {currentGadget.type === 'fan' && (
           <div>
             <div className="flex justify-between items-center mb-1.5">
-              <span className="text-slate-300 font-medium">風力強度</span>
+              <span className="text-slate-300 font-medium">{t('fanPowerLabel')}</span>
               <span className="font-mono text-sky-300 font-bold">
                 {(currentGadget.options?.power ?? 1.0).toFixed(1)}
               </span>
@@ -368,7 +370,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         {currentGadget.type === 'magnet' && (
           <div className="space-y-3">
             <div>
-              <span className="text-slate-300 font-medium block mb-1">極性モード</span>
+              <span className="text-slate-300 font-medium block mb-1">{t('magnetPolarityLabel')}</span>
               <div className="flex gap-2">
                 <button
                   onClick={() => handlePolarityChange('attract')}
@@ -378,7 +380,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                       : 'bg-slate-800 border-slate-700 text-slate-400'
                   }`}
                 >
-                  引力 (引き寄せる)
+                  {t('magnetAttract')}
                 </button>
                 <button
                   onClick={() => handlePolarityChange('repel')}
@@ -388,14 +390,14 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                       : 'bg-slate-800 border-slate-700 text-slate-400'
                   }`}
                 >
-                  斥力 (反発)
+                  {t('magnetRepel')}
                 </button>
               </div>
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-slate-300 font-medium">磁力強度</span>
+                <span className="text-slate-300 font-medium">{t('magnetPowerLabel')}</span>
                 <span className="font-mono text-indigo-300 font-bold">
                   {(currentGadget.options?.power ?? 1.0).toFixed(1)}
                 </span>
@@ -416,17 +418,17 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         {/* Bell Note / Pitch Picker */}
         {currentGadget.type === 'bell' && (
           <div className="space-y-2">
-            <span className="text-slate-300 font-medium block">ベルの音階 (音板):</span>
+            <span className="text-slate-300 font-medium block">{t('bellNoteLabel')}</span>
             <div className="grid grid-cols-4 gap-1.5">
               {[
-                { note: 'C5', label: 'ド', bg: 'bg-red-500 hover:bg-red-600' },
-                { note: 'D5', label: 'レ', bg: 'bg-orange-500 hover:bg-orange-600' },
-                { note: 'E5', label: 'ミ', bg: 'bg-yellow-500 hover:bg-yellow-600' },
-                { note: 'F5', label: 'ファ', bg: 'bg-green-500 hover:bg-green-600' },
-                { note: 'G5', label: 'ソ', bg: 'bg-cyan-500 hover:bg-cyan-600' },
-                { note: 'A5', label: 'ラ', bg: 'bg-blue-500 hover:bg-blue-600' },
-                { note: 'B5', label: 'シ', bg: 'bg-purple-500 hover:bg-purple-600' },
-                { note: 'C6', label: '高ド', bg: 'bg-pink-500 hover:bg-pink-600' },
+                { note: 'C5', label: lang === 'ja' ? 'ド' : 'C5', bg: 'bg-red-500 hover:bg-red-600' },
+                { note: 'D5', label: lang === 'ja' ? 'レ' : 'D5', bg: 'bg-orange-500 hover:bg-orange-600' },
+                { note: 'E5', label: lang === 'ja' ? 'ミ' : 'E5', bg: 'bg-yellow-500 hover:bg-yellow-600' },
+                { note: 'F5', label: lang === 'ja' ? 'ファ' : 'F5', bg: 'bg-green-500 hover:bg-green-600' },
+                { note: 'G5', label: lang === 'ja' ? 'ソ' : 'G5', bg: 'bg-cyan-500 hover:bg-cyan-600' },
+                { note: 'A5', label: lang === 'ja' ? 'ラ' : 'A5', bg: 'bg-blue-500 hover:bg-blue-600' },
+                { note: 'B5', label: lang === 'ja' ? 'シ' : 'B5', bg: 'bg-purple-500 hover:bg-purple-600' },
+                { note: 'C6', label: lang === 'ja' ? '高ド' : 'C6', bg: 'bg-pink-500 hover:bg-pink-600' },
               ].map((item) => {
                 const isCurrent = (currentGadget.options?.note || 'C5') === item.note;
                 return (
@@ -455,7 +457,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         {/* Paddle Wheel Spoke Count */}
         {currentGadget.type === 'paddle_wheel' && (
           <div>
-            <span className="text-slate-300 font-medium block mb-1.5">羽根の枚数</span>
+            <span className="text-slate-300 font-medium block mb-1.5">{lang === 'ja' ? '羽根の枚数' : 'Blades'}</span>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -466,7 +468,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                     : 'bg-slate-800 border-slate-700 text-slate-400'
                 }`}
               >
-                4枚 (十字)
+                {lang === 'ja' ? '4枚 (十字)' : '4 Blades'}
               </button>
               <button
                 type="button"
@@ -477,7 +479,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                     : 'bg-slate-800 border-slate-700 text-slate-400'
                 }`}
               >
-                6枚 (六角星)
+                {lang === 'ja' ? '6枚 (六角星)' : '6 Blades'}
               </button>
             </div>
           </div>
@@ -488,7 +490,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
           <div className="space-y-3">
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-slate-300 font-medium">ロープ間隔 (スパン)</span>
+                <span className="text-slate-300 font-medium">{lang === 'ja' ? 'ロープ間隔 (スパン)' : 'Rope Span'}</span>
                 <span className="font-mono text-emerald-300 font-bold">
                   {currentGadget.options?.span || 140}px
                 </span>
@@ -507,7 +509,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
             {/* Left Bucket Initial Water */}
             <div className="pt-1 border-t border-slate-700/60">
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-slate-300 font-medium">左バケツの水量</span>
+                <span className="text-slate-300 font-medium">{t('pulleyLeftWater')}</span>
                 <span className="font-mono text-sky-400 font-bold">
                   {Math.round((currentGadget.options?.waterAmountLeft ?? (currentGadget.options?.waterAmount ?? 0)) * 100)}%
                 </span>
@@ -523,9 +525,9 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
               />
               <div className="grid grid-cols-3 gap-1.5 mt-2">
                 {[
-                  { label: '空 (0%)', val: 0 },
-                  { label: '半分 (50%)', val: 0.5 },
-                  { label: '満杯 (100%)', val: 1.0 }
+                  { label: t('waterEmpty'), val: 0 },
+                  { label: t('waterHalf'), val: 0.5 },
+                  { label: t('waterFull'), val: 1.0 }
                 ].map((p) => (
                   <button
                     key={p.val}
@@ -546,7 +548,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
             {/* Right Bucket Initial Water */}
             <div className="pt-1 border-t border-slate-700/60">
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-slate-300 font-medium">右バケツの水量</span>
+                <span className="text-slate-300 font-medium">{t('pulleyRightWater')}</span>
                 <span className="font-mono text-sky-400 font-bold">
                   {Math.round((currentGadget.options?.waterAmountRight ?? 0) * 100)}%
                 </span>
@@ -562,9 +564,9 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
               />
               <div className="grid grid-cols-3 gap-1.5 mt-2">
                 {[
-                  { label: '空 (0%)', val: 0 },
-                  { label: '半分 (50%)', val: 0.5 },
-                  { label: '満杯 (100%)', val: 1.0 }
+                  { label: t('waterEmpty'), val: 0 },
+                  { label: t('waterHalf'), val: 0.5 },
+                  { label: t('waterFull'), val: 1.0 }
                 ].map((p) => (
                   <button
                     key={p.val}
@@ -588,7 +590,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         {currentGadget.type === 'faucet' && (
           <div className="space-y-3">
             <div>
-              <span className="text-slate-300 font-medium block mb-1">出水モード</span>
+              <span className="text-slate-300 font-medium block mb-1">{lang === 'ja' ? '出水モード' : 'Flow Mode'}</span>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -599,7 +601,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                       : 'bg-slate-800 border-slate-700 text-slate-400'
                   }`}
                 >
-                  常時水を出す
+                  {lang === 'ja' ? '常時水を出す' : 'Continuous Flow'}
                 </button>
                 <button
                   type="button"
@@ -610,14 +612,14 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
                       : 'bg-slate-800 border-slate-700 text-slate-400'
                   }`}
                 >
-                  衝撃で開く
+                  {lang === 'ja' ? '衝撃で開く' : 'Open on Impact'}
                 </button>
               </div>
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-slate-300 font-medium">水流の強さ (滴下ペース)</span>
+                <span className="text-slate-300 font-medium">{lang === 'ja' ? '水流の強さ (滴下ペース)' : 'Water Stream Rate'}</span>
                 <span className="font-mono text-sky-300 font-bold">
                   {(currentGadget.options?.flowRate ?? 1.0).toFixed(1)}x
                 </span>
@@ -639,7 +641,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
         {currentGadget.type === 'paper_cup' && (
           <div>
             <div className="flex justify-between items-center mb-1.5">
-              <span className="text-slate-300 font-medium">初期水量</span>
+              <span className="text-slate-300 font-medium">{t('faucetWaterLevel')}</span>
               <span className="font-mono text-sky-300 font-bold">
                 {Math.round((currentGadget.options?.waterAmount ?? 0) * 100)}%
               </span>
@@ -655,9 +657,9 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
             />
             <div className="flex justify-between gap-1 mt-2">
               {[
-                { label: '空 (0%)', val: 0 },
-                { label: '半分 (50%)', val: 0.5 },
-                { label: '満杯 (100%)', val: 1.0 },
+                { label: t('waterEmpty'), val: 0 },
+                { label: t('waterHalf'), val: 0.5 },
+                { label: t('waterFull'), val: 1.0 },
               ].map((p) => (
                 <button
                   key={p.val}
@@ -684,7 +686,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
           className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-medium transition"
         >
           <Copy className="w-3.5 h-3.5" />
-          <span>複製</span>
+          <span>{t('duplicateBtn')}</span>
         </button>
 
         <button
@@ -692,7 +694,7 @@ export const PropertyInspector: React.FC<PropertyInspectorProps> = ({
           className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 text-xs font-medium transition"
         >
           <Trash2 className="w-3.5 h-3.5" />
-          <span>削除</span>
+          <span>{t('deleteBtn')}</span>
         </button>
       </div>
     </aside>
